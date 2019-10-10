@@ -2,9 +2,11 @@
 #
 # Helper script to delete all deposits that are in <state> state and are older than <keep> days (default two weeks).
 #
+# Use - (dash) as depositor-account to clean deposits for all accounts.
+#
 
 usage() {
-    echo "Usage: clean-deposits <state> <host-name> <to-email> [<depositor-account>] [<keep>]"
+    echo "Usage: clean-deposits <state> <host-name> <depositor-account> <from-email> <to-email> [<keep>] [<bcc-email>]"
     echo "       clean-deposits --help"
 }
 
@@ -17,16 +19,12 @@ done
 
 STATE=$1
 EASY_HOST=$2
-TO=$3
-EASY_ACCOUNT=$4
-KEEP=$5
-FROM=noreply@dans.knaw.nl
-BCC=
+EASY_ACCOUNT=$3
+FROM=$4
+TO=$5
+KEEP=$6
+BCC=$7
 TMPDIR=/tmp
-
-if [[ "$TO" == "-" ]]; then
-    TO=easy.applicatiebeheer@dans.knaw.nl
-fi
 
 if [[ "$EASY_ACCOUNT" == "-" ]]; then
     EASY_ACCOUNT=""
@@ -59,13 +57,13 @@ exit_if_failed() {
         echo "ERROR: $1, exit status = $EXITSTATUS"
         echo "Deleting $STATE deposits FAILED ($EASY_HOST $DATE). Contact the system administrator." |
         mail -s "$(echo -e "FAILED: $EASY_HOST Report: deleting $STATE deposits for ${EASY_ACCOUNT:-all depositors}\nX-Priority: 1")" \
-             $FROM_EMAIL $BCC_EMAILS $TO_EMAILS
+             $FROM_EMAIL $BCC_EMAILS "easy.applicatiebeheer@dans.knaw.nl"
         exit 1
     fi
 }
 
 echo "Cleaning $STATE deposits for ${EASY_ACCOUNT:-all depositors}..."
-if [ $STATE == "DRAFT" ]
+if [[ "$STATE" == "DRAFT" ]]
 then
     /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit clean --data-only \
                               --keep $KEEP \
@@ -90,8 +88,8 @@ exit_if_failed "clean deposits failed"
 echo "Cleaning completed, sending report"
 echo "Report: deleted $STATE deposits for (${EASY_ACCOUNT:-all depositors}) on $EASY_HOST" | \
 mail -s "Report: deleted $STATE deposits for (${EASY_ACCOUNT:-all depositors}) on $EASY_HOST" \
-	 -a $REPORT_DELETED \
-	 $BCC_EMAILS $FROM_EMAIL $TO_EMAILS
+     -a $REPORT_DELETED \
+     $BCC_EMAILS $FROM_EMAIL $TO_EMAILS
 exit_if_failed "sending of e-mail failed"
 
 echo "Remove generated report files..."
