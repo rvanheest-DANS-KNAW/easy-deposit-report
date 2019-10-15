@@ -77,10 +77,16 @@ LINE_COUNT=$(wc -l < "$REPORT_ERROR_24")
 echo "Line count in $REPORT_ERROR_24: $LINE_COUNT line(s)."
 
 if [[ $LINE_COUNT -gt 1 || "$SEND_ALWAYS" = true ]]; then
-    echo "New failed deposits detected, therefore sending the report"
+    if [[ $LINE_COUNT == 1 ]]; then
+      echo "No new failed deposits detected, but sending the report anyway"
+      SUBJECT_LINE="$EASY_HOST Error report: status of failed EASY deposits (${EASY_ACCOUNT:-all depositors}; no new deposits)"
+    else
+      echo "New failed deposits detected, therefore sending the report"
+      SUBJECT_LINE="$EASY_HOST Error report: status of failed EASY deposits (${EASY_ACCOUNT:-all depositors})"
+    fi
 
     echo "Status of $EASY_HOST deposits d.d. $(date) for depositor: ${EASY_ACCOUNT:-all}" | \
-    mail -s "$EASY_HOST Error report: status of failed EASY deposits (${EASY_ACCOUNT:-all depositors})" \
+    mail -s "$SUBJECT_LINE" \
          -a $REPORT_ERROR \
          -a $REPORT_ERROR_24 \
          $BCC_EMAILS $FROM_EMAIL $TO_EMAILS

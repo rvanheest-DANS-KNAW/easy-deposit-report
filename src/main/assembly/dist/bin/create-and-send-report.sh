@@ -87,10 +87,16 @@ LINE_COUNT=$(wc -l < "$REPORT_FULL_24")
 echo "Line count in $REPORT_FULL_24: $LINE_COUNT line(s)."
 
 if [[ $LINE_COUNT -gt 1 || "$SEND_ALWAYS" = true ]]; then
-    echo "New deposits detected, therefore sending the report"
+    if [[ $LINE_COUNT == 1 ]]; then
+      echo "No new deposits detected, but sending the report anyway"
+      SUBJECT_LINE="$EASY_HOST Report: status of EASY deposits (${EASY_ACCOUNT:-all depositors}; no new deposits)"
+    else
+      echo "New deposits detected, therefore sending the report"
+      SUBJECT_LINE="$EASY_HOST Report: status of EASY deposits (${EASY_ACCOUNT:-all depositors})"
+    fi
 
     echo "Status of $EASY_HOST deposits d.d. $(date) for depositor: ${EASY_ACCOUNT:-all}" | \
-    mail -s "$EASY_HOST Report: status of EASY deposits (${EASY_ACCOUNT:-all depositors})" \
+    mail -s "$SUBJECT_LINE" \
          -a $REPORT_SUMMARY \
          -a $REPORT_SUMMARY_24 \
          -a $REPORT_FULL \

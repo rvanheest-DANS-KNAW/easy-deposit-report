@@ -86,8 +86,8 @@ fi
 exit_if_failed "clean deposits failed"
 
 echo "Cleaning completed, sending report"
-echo "Report: deleted $STATE deposits for (${EASY_ACCOUNT:-all depositors}) on $EASY_HOST" | \
-mail -s "Report: deleted $STATE deposits for (${EASY_ACCOUNT:-all depositors}) on $EASY_HOST" \
+echo "$EASY_HOST Report: deleted $STATE deposits for (${EASY_ACCOUNT:-all depositors})" | \
+mail -s "$EASY_HOST Report: deleted $STATE deposits for (${EASY_ACCOUNT:-all depositors})" \
      -a $REPORT_DELETED \
      $BCC_EMAILS $FROM_EMAIL $TO_EMAILS
 exit_if_failed "sending of e-mail failed"
