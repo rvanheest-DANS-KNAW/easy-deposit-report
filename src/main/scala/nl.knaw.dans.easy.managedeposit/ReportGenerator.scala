@@ -146,6 +146,6 @@ object ReportGenerator {
   }
 
   private def formatCountAndSize(deposits: Seq[DepositInformation], filterOnState: State): String = {
-    f"${ filterOnState.toString }%-10s : ${ deposits.size }%5d (${ formatStorageSize(deposits.map(_.storageSpace).sum) })"
+    f"${ filterOnState.toString }%-15s : ${ deposits.size }%5d (${ formatStorageSize(deposits.map(_.storageSpace).sum) })"
   }
 }
