@@ -92,10 +92,6 @@ class ReportGeneratorSpec extends TestSupportFixture
   }
 
   "output Summary" should "should contain all deposits" in {
-    if (!testDir.exists) { //output of rapport is written to target
-      testDir.createDirectories()
-    }
-
     val deposits = createDeposits
     val now = Calendar.getInstance().getTime
     val format = new SimpleDateFormat("yyyy-MM-dd")
@@ -108,19 +104,79 @@ class ReportGeneratorSpec extends TestSupportFixture
       ps.close()
     }
 
-    val reportOutput = baos.toString
-    reportOutput should include(s"Timestamp          : $currentTime")
-    reportOutput should include(f"Number of deposits : ${ 16 }%10d")
-    reportOutput should include("Total space        :      2.0 M") // (129000 * 16 ) / (1024 * 1024)
-    reportOutput should include regex toStateDetailsRegex(ARCHIVED, 2, 252.0)
-    reportOutput should include regex toStateDetailsRegex(DRAFT, 1, 126.0)
-    reportOutput should include regex toStateDetailsRegex(FINALIZING, 1, 126.0)
-    reportOutput should include regex toStateDetailsRegex(INVALID, 1, 126.0)
-    reportOutput should include regex toStateDetailsRegex(IN_REVIEW, 1, 126.0)
-    reportOutput should include regex toStateDetailsRegex(FEDORA_ARCHIVED, 1, 126.0)
-    reportOutput should include regex toStateDetailsRegex(REJECTED, 1, 126.0)
-    reportOutput should include regex toStateDetailsRegex(SUBMITTED, 4, 503.9)
-    reportOutput should include regex toStateDetailsRegex(UNKNOWN, 4, 503.9)
+    baos.toString.trim shouldBe
+      s"""Grand totals:
+         |-------------
+         |Timestamp          : $currentTime
+         |Number of deposits :         16
+         |Total space        :      2.0 M
+         |
+         |Per state:
+         |----------
+         |ARCHIVED        :     2 (   252.0 K)
+         |DRAFT           :     1 (   126.0 K)
+         |FEDORA_ARCHIVED :     1 (   126.0 K)
+         |FINALIZING      :     1 (   126.0 K)
+         |IN_REVIEW       :     1 (   126.0 K)
+         |INVALID         :     1 (   126.0 K)
+         |REJECTED        :     1 (   126.0 K)
+         |SUBMITTED       :     4 (   503.9 K)
+         |UNKNOWN         :     4 (   503.9 K)""".stripMargin
+  }
+
+  it should "produce a report when no deposits are found" in {
+    val now = Calendar.getInstance().getTime
+    val format = new SimpleDateFormat("yyyy-MM-dd")
+    val currentTime = format.format(now)
+    val baos = new ByteArrayOutputStream()
+    val ps = new PrintStream(baos, true)
+    try {
+      ReportGenerator.outputSummary(Nil, Some("dans-1"))(ps)
+    } finally {
+      ps.close()
+    }
+
+    baos.toString.trim shouldBe
+      s"""Grand totals:
+         |-------------
+         |Timestamp          : $currentTime
+         |Number of deposits :          0
+         |Total space        :      0.0 B
+         |
+         |Per state:
+         |----------""".stripMargin
+  }
+
+  it should "align the data per state based on the longest state" in {
+    val deposits = createDeposits.filterNot(_.state == FEDORA_ARCHIVED)
+    val now = Calendar.getInstance().getTime
+    val format = new SimpleDateFormat("yyyy-MM-dd")
+    val currentTime = format.format(now)
+    val baos = new ByteArrayOutputStream()
+    val ps = new PrintStream(baos, true)
+    try {
+      ReportGenerator.outputSummary(deposits, Some("dans-1"))(ps)
+    } finally {
+      ps.close()
+    }
+
+    baos.toString.trim shouldBe
+      s"""Grand totals:
+         |-------------
+         |Timestamp          : $currentTime
+         |Number of deposits :         15
+         |Total space        :      1.8 M
+         |
+         |Per state:
+         |----------
+         |ARCHIVED   :     2 (   252.0 K)
+         |DRAFT      :     1 (   126.0 K)
+         |FINALIZING :     1 (   126.0 K)
+         |IN_REVIEW  :     1 (   126.0 K)
+         |INVALID    :     1 (   126.0 K)
+         |REJECTED   :     1 (   126.0 K)
+         |SUBMITTED  :     4 (   503.9 K)
+         |UNKNOWN    :     4 (   503.9 K)""".stripMargin
   }
 
   "outputErrorReport" should "only print the deposits containing an error" in {
@@ -190,8 +246,6 @@ class ReportGeneratorSpec extends TestSupportFixture
       ps.close()
     }
   }
-
-  private def toStateDetailsRegex(state: State, amount: Int, size: Double): Regex = s"$state.+$amount.+$size".r
 
   private def createCsvRow(deposit: DepositInformation): String = {
     s"${ deposit.depositor }," +

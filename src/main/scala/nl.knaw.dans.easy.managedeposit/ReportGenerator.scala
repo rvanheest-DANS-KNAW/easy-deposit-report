@@ -60,6 +60,7 @@ object ReportGenerator {
     val now = Calendar.getInstance().getTime
     val format = new SimpleDateFormat("yyyy-MM-dd")
     val currentTime = format.format(now)
+    lazy val stateLength = depositsGroupedByState.map { case (state, _) => state.toString.length }.max
 
     printStream.println("Grand totals:")
     printStream.println("-------------")
@@ -69,7 +70,7 @@ object ReportGenerator {
     printStream.println()
     printStream.println("Per state:")
     printStream.println("----------")
-    depositsGroupedByState.foreach { case (state, toBePrintedDeposits) => printLineForDepositGroup(state, toBePrintedDeposits) }
+    depositsGroupedByState.foreach { case (state, toBePrintedDeposits) => printLineForDepositGroup(state, toBePrintedDeposits, stateLength) }
     printStream.println()
   }
 
@@ -129,8 +130,8 @@ object ReportGenerator {
     }
   }
 
-  private def printLineForDepositGroup(state: State, depositGroup: Seq[DepositInformation])(implicit printStream: PrintStream): Unit = {
-    printStream.println(formatCountAndSize(depositGroup, state))
+  private def printLineForDepositGroup(state: State, depositGroup: Seq[DepositInformation], maxStateLength: Int)(implicit printStream: PrintStream): Unit = {
+    printStream.println(formatCountAndSize(depositGroup, state, maxStateLength))
   }
 
   private def formatStorageSize(nBytes: Long): String = {
@@ -145,7 +146,7 @@ object ReportGenerator {
     else formatSize(1, "B")
   }
 
-  private def formatCountAndSize(deposits: Seq[DepositInformation], filterOnState: State): String = {
-    f"${ filterOnState.toString }%-15s : ${ deposits.size }%5d (${ formatStorageSize(deposits.map(_.storageSpace).sum) })"
+  private def formatCountAndSize(deposits: Seq[DepositInformation], filterOnState: State, maxStateLength: Int): String = {
+    s"%-${maxStateLength}s : %5d (%s)".format(filterOnState, deposits.size, formatStorageSize(deposits.map(_.storageSpace).sum))
   }
 }
