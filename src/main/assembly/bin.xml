@@ -41,8 +41,6 @@
             <outputDirectory>bin</outputDirectory>
             <includes>
                 <include>easy-manage-deposit</include>
-                <include>easy-manage-deposit-service-start</include>
-                <include>easy-manage-deposit-initd.sh</include>
             </includes>
             <fileMode>0755</fileMode>
         </fileSet>
