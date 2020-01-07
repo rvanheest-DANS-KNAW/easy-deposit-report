@@ -25,8 +25,6 @@ import org.joda.time.DateTime
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.{ Inspectors, Matchers }
 
-import scala.util.matching.Regex
-
 class ReportGeneratorSpec extends TestSupportFixture
   with Matchers
   with MockFactory
@@ -225,6 +223,26 @@ class ReportGeneratorSpec extends TestSupportFixture
 
     val errorReport = baos.toString
     forEvery(deposits)(deposit => errorReport should include(createCsvRow(deposit))) //all deposits should be added to the report
+  }
+
+  it should "leave out deposits originating from easy-deposit-api that are rejected by a datamanager after review" in {
+    val baos = new ByteArrayOutputStream()
+    val ps: PrintStream = new PrintStream(baos, true)
+    val rejectedApiDeposit = createDeposit("dans-rejected", REJECTED, "SRC1").copy(origin = "API", description = Curation.requestChangesDescription)
+    val deposits = List(
+      createDeposit("dans-0", ARCHIVED, "SRC1").copy(dansDoiRegistered = Some(false)), //violates the rule ARCHIVED must be registered
+      createDeposit("dans-1", FAILED, "SRC1"),
+      createDeposit("dans-2", REJECTED, "SRC1"),
+      createDeposit("dans-3", INVALID, "SRC2"),
+      createDeposit("dans-4", UNKNOWN, "SRC1"),
+      createDeposit("dans-5", null, "SRC1"),
+    )
+    outputReportManged(ps, deposits :+ rejectedApiDeposit, ReportType.ERROR)
+
+    val errorReport = baos.toString
+    errorReport.lines.toList should have length deposits.size + 1 // 1x header + |deposits| 
+    forEvery(deposits)(deposit => errorReport should include(createCsvRow(deposit)))
+    errorReport should not include createCsvRow(rejectedApiDeposit)
   }
 
   "outputFullReport" should "print all deposits" in {

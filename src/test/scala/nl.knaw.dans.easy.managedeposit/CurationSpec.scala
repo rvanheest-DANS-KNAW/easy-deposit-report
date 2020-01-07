@@ -90,7 +90,7 @@ class CurationSpec extends TestSupportFixture
   it should "should update the state.label=REJECTED, state.description and curation.performed properties if the current state.label is IN_REVIEW and fedora.state=DELETED" in {
     val manager = setupTestAndValidateCurationResult(DELETED, Success(s"[aba410b6-1a55-40b2-9ebe-6122aad00285] deposit with datasetId $datasetId has been successfully curated, state shifted from $IN_REVIEW to $REJECTED"))
     manager.getStateLabel shouldBe REJECTED
-    manager.getStateDescription.value shouldBe "The DANS data-manager requests changes on this deposit"
+    manager.getStateDescription.value shouldBe Curation.requestChangesDescription
     manager.isCurationPerformed shouldBe true
   }
 

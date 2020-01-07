@@ -19,6 +19,7 @@ import java.io.PrintStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
+import nl.knaw.dans.easy.managedeposit.Curation.requestChangesDescription
 import nl.knaw.dans.easy.managedeposit.State.{ ARCHIVED, FAILED, INVALID, REJECTED, State, UNKNOWN }
 import org.apache.commons.csv.CSVFormat
 import resource.managed
@@ -44,6 +45,7 @@ object ReportGenerator {
     printRecords(deposits.filter {
       case DepositInformation(_, _, _, _, _, INVALID, _, _, _, _, _, _, _, _) => true
       case DepositInformation(_, _, _, _, _, FAILED, _, _, _, _, _, _, _, _) => true
+      case DepositInformation(_, _, _, _, _, REJECTED, `requestChangesDescription`, _, _, _, _, "API", _, _) => false
       case DepositInformation(_, _, _, _, _, REJECTED, _, _, _, _, _, _, _, _) => true
       case DepositInformation(_, _, _, _, _, UNKNOWN, _, _, _, _, _, _, _, _) => true
       case DepositInformation(_, _, _, _, _, null, _, _, _, _, _, _, _, _) => true
@@ -147,6 +149,6 @@ object ReportGenerator {
   }
 
   private def formatCountAndSize(deposits: Seq[DepositInformation], filterOnState: State, maxStateLength: Int): String = {
-    s"%-${maxStateLength}s : %5d (%s)".format(filterOnState, deposits.size, formatStorageSize(deposits.map(_.storageSpace).sum))
+    s"%-${ maxStateLength }s : %5d (%s)".format(filterOnState, deposits.size, formatStorageSize(deposits.map(_.storageSpace).sum))
   }
 }
