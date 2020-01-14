@@ -49,7 +49,7 @@ trait Curation extends DebugEnhancedLogging {
           "identifier.dans-doi.registered" -> "yes",
           "curation.performed" -> "yes",
           "state.label" -> FEDORA_ARCHIVED.toString,
-          "state.description" -> s"${ landingPageBaseUrl.resolve(datasetId) }"
+          "state.description" -> s"${ landingPageBaseUrl.resolve(s"./$datasetId") }"
         )
         manager.saveProperties()
         logAndReturnMessage(s"[$depositId] deposit with datasetId $datasetId has been successfully curated, state shifted from $IN_REVIEW to $FEDORA_ARCHIVED")
