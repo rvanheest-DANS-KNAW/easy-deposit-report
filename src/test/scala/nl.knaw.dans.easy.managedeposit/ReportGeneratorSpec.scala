@@ -228,8 +228,7 @@ class ReportGeneratorSpec extends TestSupportFixture
   it should "leave out deposits originating from easy-deposit-api that are rejected by a datamanager after review" in {
     val baos = new ByteArrayOutputStream()
     val ps: PrintStream = new PrintStream(baos, true)
-    val rejectedApiDeposit = createDeposit("dans-rejected", REJECTED, "SRC1").copy(origin = "API", description = Curation.requestChangesDescription)
-    val deposits = List(
+    val depositsInReport = List(
       createDeposit("dans-0", ARCHIVED, "SRC1").copy(dansDoiRegistered = Some(false)), //violates the rule ARCHIVED must be registered
       createDeposit("dans-1", FAILED, "SRC1"),
       createDeposit("dans-2", REJECTED, "SRC1"),
@@ -237,12 +236,16 @@ class ReportGeneratorSpec extends TestSupportFixture
       createDeposit("dans-4", UNKNOWN, "SRC1"),
       createDeposit("dans-5", null, "SRC1"),
     )
-    outputReportManged(ps, deposits :+ rejectedApiDeposit, ReportType.ERROR)
+    val depositsNotInReport = List(
+      createDeposit("dans-rejected", REJECTED, "SRC1").copy(origin = "API", description = Curation.requestChangesDescription),
+      createDeposit("dans-abandoned-draft", INVALID, "SRC1").copy(origin = "SWORD2", description = "abandoned draft, data removed"),
+    )
+    outputReportManged(ps, depositsInReport ::: depositsNotInReport, ReportType.ERROR)
 
     val errorReport = baos.toString
-    errorReport.lines.toList should have length deposits.size + 1 // 1x header + |deposits| 
-    forEvery(deposits)(deposit => errorReport should include(createCsvRow(deposit)))
-    errorReport should not include createCsvRow(rejectedApiDeposit)
+    errorReport.lines.toList should have length depositsInReport.size + 1 // 1x header + |depositsInReport| 
+    forEvery(depositsInReport)(deposit => errorReport should include(createCsvRow(deposit)))
+    forEvery(depositsNotInReport)(deposit => errorReport should not include createCsvRow(deposit))
   }
 
   "outputFullReport" should "print all deposits" in {

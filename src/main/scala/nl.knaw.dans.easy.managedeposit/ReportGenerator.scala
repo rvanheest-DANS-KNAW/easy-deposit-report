@@ -43,6 +43,7 @@ object ReportGenerator {
 
   def outputErrorReport(deposits: Deposits)(implicit printStream: PrintStream): Unit = {
     printRecords(deposits.filter {
+      case DepositInformation(_, _, _, _, _, INVALID, "abandoned draft, data removed", _, _, _, _, _, _, _) => false // see `clean-deposits.sh` (clean DRAFT section)
       case DepositInformation(_, _, _, _, _, INVALID, _, _, _, _, _, _, _, _) => true
       case DepositInformation(_, _, _, _, _, FAILED, _, _, _, _, _, _, _, _) => true
       case DepositInformation(_, _, _, _, _, REJECTED, `requestChangesDescription`, _, _, _, _, "API", _, _) => false
