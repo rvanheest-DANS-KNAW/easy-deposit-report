@@ -76,10 +76,6 @@ exit_if_failed() {
     echo "OK"
 }
 
-echo -n "Creating error report for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
-/opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report error $DATAMANAGER $EASY_ACCOUNT > $REPORT_ERROR
-exit_if_failed "error report failed"
-
 echo -n "Creating error report from the last 24 hours for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
 /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report error --age 0 $DATAMANAGER $EASY_ACCOUNT > $REPORT_ERROR_24
 exit_if_failed "error report failed"
@@ -96,6 +92,10 @@ if [[ $LINE_COUNT -gt 1 || "$SEND_ALWAYS" = true ]]; then
       echo "New failed deposits detected, therefore sending the report"
       SUBJECT_LINE="$EASY_HOST Error report: status of failed EASY deposits (${EASY_ACCOUNT:-all depositors}; ${ERR_DM})"
     fi
+
+    echo -n "Creating error report for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
+    /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report error $DATAMANAGER $EASY_ACCOUNT > $REPORT_ERROR
+    exit_if_failed "error report failed"
 
     echo "Status of $EASY_HOST deposits d.d. $(date) for depositor: ${EASY_ACCOUNT:-all} and ${ERR_DM}" | \
     mail -s "$SUBJECT_LINE" \

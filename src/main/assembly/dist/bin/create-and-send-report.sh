@@ -80,18 +80,6 @@ exit_if_failed() {
     echo "OK"
 }
 
-echo -n "Creating summary report for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
-/opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report summary $DATAMANAGER $EASY_ACCOUNT > $REPORT_SUMMARY
-exit_if_failed "summary report failed"
-
-echo -n "Creating summary report from the last 24 hours for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
-/opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report summary --age 0 $DATAMANAGER $EASY_ACCOUNT > $REPORT_SUMMARY_24
-exit_if_failed "summary report failed"
-
-echo -n "Creating full report for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
-/opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report full $DATAMANAGER $EASY_ACCOUNT > $REPORT_FULL
-exit_if_failed "full report failed"
-
 echo -n "Creating full report from the last 24 hours for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
 /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report full --age 0 $DATAMANAGER $EASY_ACCOUNT > $REPORT_FULL_24
 exit_if_failed "full report failed"
@@ -108,6 +96,18 @@ if [[ $LINE_COUNT -gt 1 || "$SEND_ALWAYS" = true ]]; then
       echo "New deposits detected, therefore sending the report"
       SUBJECT_LINE="$EASY_HOST Report: status of EASY deposits (${EASY_ACCOUNT:-all depositors}; ${ERR_DM})"
     fi
+
+    echo -n "Creating summary report for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
+    /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report summary $DATAMANAGER $EASY_ACCOUNT > $REPORT_SUMMARY
+    exit_if_failed "summary report failed"
+
+    echo -n "Creating summary report from the last 24 hours for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
+    /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report summary --age 0 $DATAMANAGER $EASY_ACCOUNT > $REPORT_SUMMARY_24
+    exit_if_failed "summary report failed"
+
+    echo -n "Creating full report for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."
+    /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report full $DATAMANAGER $EASY_ACCOUNT > $REPORT_FULL
+    exit_if_failed "full report failed"
 
     echo "Status of $EASY_HOST deposits d.d. $(date) for depositor: ${EASY_ACCOUNT:-all} and ${ERR_DM}" | \
     mail -s "$SUBJECT_LINE" \
