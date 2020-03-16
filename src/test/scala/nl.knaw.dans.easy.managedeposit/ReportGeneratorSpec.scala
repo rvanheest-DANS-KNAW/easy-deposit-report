@@ -243,7 +243,7 @@ class ReportGeneratorSpec extends TestSupportFixture
     outputReportManged(ps, depositsInReport ::: depositsNotInReport, ReportType.ERROR)
 
     val errorReport = baos.toString
-    errorReport.lines.toList should have length depositsInReport.size + 1 // 1x header + |depositsInReport| 
+    errorReport.linesIterator.toList should have length depositsInReport.size + 1 // 1x header + |depositsInReport|
     forEvery(depositsInReport)(deposit => errorReport should include(createCsvRow(deposit)))
     forEvery(depositsNotInReport)(deposit => errorReport should not include createCsvRow(deposit))
   }

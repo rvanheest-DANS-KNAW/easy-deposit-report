@@ -20,7 +20,7 @@
     <parent>
         <groupId>nl.knaw.dans.shared</groupId>
         <artifactId>dans-scala-app-project</artifactId>
-        <version>5.1.0</version>
+        <version>6.0.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <groupId>nl.knaw.dans.easy</groupId>
@@ -57,7 +57,6 @@
         <dependency>
             <groupId>org.rogach</groupId>
             <artifactId>scallop_2.12</artifactId>
-            <version>3.2.0</version>
         </dependency>
         <dependency>
             <groupId>commons-configuration</groupId>
