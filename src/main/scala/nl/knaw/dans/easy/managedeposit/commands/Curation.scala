@@ -19,7 +19,7 @@ import java.net.URI
 
 import com.yourmediashelf.fedora.client.FedoraClient
 import nl.knaw.dans.easy.managedeposit.Command.FeedBackMessage
-import nl.knaw.dans.easy.managedeposit.State.{ FEDORA_ARCHIVED, IN_REVIEW, REJECTED }
+import nl.knaw.dans.easy.managedeposit.State.{ FEDORA_ARCHIVED, IN_REVIEW, REJECTED, State }
 import nl.knaw.dans.easy.managedeposit.fedora.FedoraState.FedoraState
 import nl.knaw.dans.easy.managedeposit.fedora.{ Fedora, FedoraState }
 import nl.knaw.dans.easy.managedeposit.properties.{ DepositProperties, DepositPropertiesRepository }
@@ -36,13 +36,13 @@ class Curation(fedora: Fedora,
   def syncFedoraState(datasetId: DatasetId): Try[FeedBackMessage] = {
     for {
       props <- depositPropertiesFactory.findByDatasetId(datasetId)
-      depositId <- props.getDepositId
-      curationMessage <- curate(props, depositId, datasetId)
+      (depositId, stateLabel) <- props.getCurationParameters
+      curationMessage <- curate(props, depositId, stateLabel, datasetId)
     } yield curationMessage
   }
 
-  private def curate(props: DepositProperties, depositId: DepositId, datasetId: DatasetId): Try[FeedBackMessage] = {
-    props.getStateLabel.flatMap {
+  private def curate(props: DepositProperties, depositId: DepositId, stateLabel: Option[State], datasetId: DatasetId): Try[FeedBackMessage] = {
+    stateLabel match {
       case Some(State.IN_REVIEW) => getFedoraStateAndUpdateProperties(props, depositId, datasetId)
       case Some(state) => logAndReturnMessage(s"[$depositId] deposit with datasetId $datasetId has state $state, no action required")
       case None => logAndReturnMessage(s"[$depositId] deposit with datasetId $datasetId doesn't have a state set, could not take any action")

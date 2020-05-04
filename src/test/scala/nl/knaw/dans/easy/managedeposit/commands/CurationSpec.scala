@@ -62,8 +62,7 @@ class CurationSpec extends TestSupportFixture with Inside with MockFactory {
   "syncFedoraState" should "should update the state.label=FEDORA_ARCHIVED, state.description=<landingPage> and curation.performed properties if the current state.label is IN_REVIEW" in {
     val props = mock[DepositProperties]
     depositPropertiesFactory.findByDatasetId _ expects datasetId returning Success(props)
-    props.getDepositId _ expects() returning Success(depositId)
-    props.getStateLabel _ expects() returning Success(Some(IN_REVIEW))
+    props.getCurationParameters _ expects() returning Success(depositId -> Some(IN_REVIEW))
     (fedora.datasetIdExists(_: DatasetId)) expects datasetId returning Success(true)
     (fedora.getFedoraState(_: DatasetId)) expects datasetId returning Try(PUBLISHED)
     props.setCurationParameters _ expects(true, FEDORA_ARCHIVED, s"$landingsPageBaseUrl$datasetId") returning Success(())
@@ -74,8 +73,7 @@ class CurationSpec extends TestSupportFixture with Inside with MockFactory {
   it should "should update the state.label=REJECTED, state.description and curation.performed properties if the current state.label is IN_REVIEW and fedora.state=DELETED" in {
     val props = mock[DepositProperties]
     depositPropertiesFactory.findByDatasetId _ expects datasetId returning Success(props)
-    props.getDepositId _ expects() returning Success(depositId)
-    props.getStateLabel _ expects() returning Success(Some(IN_REVIEW))
+    props.getCurationParameters _ expects() returning Success(depositId -> Some(IN_REVIEW))
     (fedora.datasetIdExists(_: DatasetId)) expects datasetId returning Success(true)
     (fedora.getFedoraState(_: DatasetId)) expects datasetId returning Try(DELETED)
     props.setCurationParameters _ expects(false, REJECTED, Curation.requestChangesDescription) returning Success(())
@@ -86,8 +84,7 @@ class CurationSpec extends TestSupportFixture with Inside with MockFactory {
   it should "not do anything if a fedoraState is returned that is not published or deleted" in {
     val props = mock[DepositProperties]
     depositPropertiesFactory.findByDatasetId _ expects datasetId returning Success(props)
-    props.getDepositId _ expects() returning Success(depositId)
-    props.getStateLabel _ expects() returning Success(Some(IN_REVIEW))
+    props.getCurationParameters _ expects() returning Success(depositId -> Some(IN_REVIEW))
     (fedora.datasetIdExists(_: DatasetId)) expects datasetId returning Success(true)
     (fedora.getFedoraState(_: DatasetId)) expects datasetId returning Try(MAINTENANCE)
     props.setCurationParameters _ expects(*, *, *) never()
@@ -98,8 +95,7 @@ class CurationSpec extends TestSupportFixture with Inside with MockFactory {
   it should "fail if the dataset is not known at fedora" in {
     val props = mock[DepositProperties]
     depositPropertiesFactory.findByDatasetId _ expects datasetId returning Success(props)
-    props.getDepositId _ expects() returning Success(depositId)
-    props.getStateLabel _ expects() returning Success(Some(IN_REVIEW))
+    props.getCurationParameters _ expects() returning Success(depositId -> Some(IN_REVIEW))
     (fedora.datasetIdExists(_: DatasetId)) expects datasetId returning Success(false)
     (fedora.getFedoraState(_: DatasetId)) expects * never()
     props.setCurationParameters _ expects(*, *, *) never()
@@ -114,8 +110,7 @@ class CurationSpec extends TestSupportFixture with Inside with MockFactory {
     val props = mock[DepositProperties]
     val failure = Failure(new RuntimeException("Connection Refused"))
     depositPropertiesFactory.findByDatasetId _ expects datasetId returning Success(props)
-    props.getDepositId _ expects() returning Success(depositId)
-    props.getStateLabel _ expects() returning Success(Some(IN_REVIEW))
+    props.getCurationParameters _ expects() returning Success(depositId -> Some(IN_REVIEW))
     (fedora.datasetIdExists(_: DatasetId)) expects datasetId returning failure
     (fedora.getFedoraState(_: DatasetId)) expects * never()
     props.setCurationParameters _ expects(*, *, *) never()
@@ -127,8 +122,7 @@ class CurationSpec extends TestSupportFixture with Inside with MockFactory {
     val props = mock[DepositProperties]
     val failure = Failure(new RuntimeException("Connection Refused"))
     depositPropertiesFactory.findByDatasetId _ expects datasetId returning Success(props)
-    props.getDepositId _ expects() returning Success(depositId)
-    props.getStateLabel _ expects() returning Success(Some(IN_REVIEW))
+    props.getCurationParameters _ expects() returning Success(depositId -> Some(IN_REVIEW))
     (fedora.datasetIdExists(_: DatasetId)) expects datasetId returning Success(true)
     (fedora.getFedoraState(_: DatasetId)) expects datasetId returning failure
     props.setCurationParameters _ expects(*, *, *) never()
@@ -139,8 +133,7 @@ class CurationSpec extends TestSupportFixture with Inside with MockFactory {
   it should "not do anything if the state.label is not IN_REVIEW" in {
     val props = mock[DepositProperties]
     depositPropertiesFactory.findByDatasetId _ expects datasetId returning Success(props)
-    props.getDepositId _ expects() returning Success(depositId)
-    props.getStateLabel _ expects() returning Success(Some(State.SUBMITTED))
+    props.getCurationParameters _ expects() returning Success(depositId -> Some(State.SUBMITTED))
     (fedora.datasetIdExists(_: DatasetId)) expects * never()
     (fedora.getFedoraState(_: DatasetId)) expects * never()
     props.setCurationParameters _ expects(*, *, *) never()
@@ -151,8 +144,7 @@ class CurationSpec extends TestSupportFixture with Inside with MockFactory {
   it should "not do anything if there is no state" in {
     val props = mock[DepositProperties]
     depositPropertiesFactory.findByDatasetId _ expects datasetId returning Success(props)
-    props.getDepositId _ expects() returning Success(depositId)
-    props.getStateLabel _ expects() returning Success(None)
+    props.getCurationParameters _ expects() returning Success(depositId -> None)
     (fedora.datasetIdExists(_: DatasetId)) expects * never()
     (fedora.getFedoraState(_: DatasetId)) expects * never()
     props.setCurationParameters _ expects(*, *, *) never()

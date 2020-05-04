@@ -65,7 +65,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
     depositProperties.map(props => Option(props.getString(key)))
   }
 
-  override def getDepositId: Try[String] = {
+  def getDepositId: Try[DepositId] = {
     getProperty(depositIdKey).map(_.getOrElse(deposit.name))
   }
 
@@ -133,6 +133,13 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
 
   def getFedoraIdentifier: Try[Option[String]] = {
     getProperty("identifier.fedora")
+  }
+  
+  override def getCurationParameters: Try[(DepositId, Option[State])] = {
+    for {
+      depositId <- getDepositId
+      state <- getStateLabel
+    } yield depositId -> state
   }
 
   def getStateLabel: Try[Option[State]] = {
