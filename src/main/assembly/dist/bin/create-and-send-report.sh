@@ -7,17 +7,22 @@
 #
 
 usage() {
-    echo "Usage: create-and-send-report [-s, --send-always] <host-name> <depositor-account> <datamanager-account> [<from-email>] <to-email> [<bcc-email>]"
+    echo "Usage: create-and-send-report [-s, --send-always] [-f, --include-full-report] <host-name> <depositor-account> <datamanager-account> [<from-email>] <to-email> [<bcc-email>]"
     echo "       create-and-send-report --help"
 }
 
 SEND_ALWAYS=false
+INCLUDE_FULL_REPORT=false
 
 while true; do
     case "$1" in
         -h | --help) usage; exit 0 ;;
         -s | --send-always)
             SEND_ALWAYS=true
+            shift 1
+        ;;
+        -f | --include-full-report)
+            INCLUDE_FULL_REPORT=true
             shift 1
         ;;
         *) break;;
@@ -43,12 +48,14 @@ if [[ "$DATAMANAGER_ACCOUNT" == "-" ]]; then
     ERR_DM="all datamanagers"
     REPORT_SUMMARY=${TMPDIR}/report-summary-${EASY_ACCOUNT:-all}-$DATE.txt
     REPORT_SUMMARY_24=${TMPDIR}/report-summary-${EASY_ACCOUNT:-all}-yesterday-$DATE.txt
+    REPORT_FULL=${TMPDIR}/report-full-${EASY_ACCOUNT:-all}-$DATE.csv
     REPORT_FULL_24=${TMPDIR}/report-full-${EASY_ACCOUNT:-all}-yesterday-$DATE.csv
 else
     DATAMANAGER="-m $DATAMANAGER_ACCOUNT"
     ERR_DM="datamanager $DATAMANAGER_ACCOUNT"
     REPORT_SUMMARY=${TMPDIR}/report-summary-${EASY_ACCOUNT:-all}-${DATAMANAGER_ACCOUNT:-all}-$DATE.txt
     REPORT_SUMMARY_24=${TMPDIR}/report-summary-${EASY_ACCOUNT:-all}-${DATAMANAGER_ACCOUNT:-all}-yesterday-$DATE.txt
+    REPORT_FULL=${TMPDIR}/report-full-${EASY_ACCOUNT:-all}-${DATAMANAGER_ACCOUNT:-all}-$DATE.csv
     REPORT_FULL_24=${TMPDIR}/report-full-${EASY_ACCOUNT:-all}-${DATAMANAGER_ACCOUNT:-all}-yesterday-$DATE.csv
 fi
 
@@ -103,13 +110,28 @@ if [[ $LINE_COUNT -gt 1 || "$SEND_ALWAYS" = true ]]; then
     /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report summary --age 0 $DATAMANAGER $EASY_ACCOUNT > $REPORT_SUMMARY_24
     exit_if_failed "summary report failed"
 
-    echo "Status of $EASY_HOST deposits d.d. $(date) for depositor: ${EASY_ACCOUNT:-all} and ${ERR_DM}" | \
-    mail -s "$SUBJECT_LINE" \
-         -a $REPORT_SUMMARY \
-         -a $REPORT_SUMMARY_24 \
-         -a $REPORT_FULL_24 \
-         $BCC_EMAILS $FROM_EMAIL $TO_EMAILS
-    exit_if_failed "sending of e-mail failed"
+    if [[ "$INCLUDE_FULL_REPORT" = true ]]; then
+      echo -n "Creating full report for ${EASY_ACCOUNT:-all depositors} and ${ERR_DM}..."	
+      /opt/dans.knaw.nl/easy-manage-deposit/bin/easy-manage-deposit report full $DATAMANAGER $EASY_ACCOUNT > $REPORT_FULL	
+      exit_if_failed "full report failed"
+      
+      echo "Status of $EASY_HOST deposits d.d. $(date) for depositor: ${EASY_ACCOUNT:-all} and ${ERR_DM}" | \
+      mail -s "$SUBJECT_LINE" \
+           -a $REPORT_SUMMARY \
+           -a $REPORT_SUMMARY_24 \
+           -a $REPORT_FULL \
+           -a $REPORT_FULL_24 \
+           $BCC_EMAILS $FROM_EMAIL $TO_EMAILS
+      exit_if_failed "sending of e-mail failed"
+    else
+      echo "Status of $EASY_HOST deposits d.d. $(date) for depositor: ${EASY_ACCOUNT:-all} and ${ERR_DM}" | \
+      mail -s "$SUBJECT_LINE" \
+           -a $REPORT_SUMMARY \
+           -a $REPORT_SUMMARY_24 \
+           -a $REPORT_FULL_24 \
+           $BCC_EMAILS $FROM_EMAIL $TO_EMAILS
+      exit_if_failed "sending of e-mail failed"
+    fi
 else
     echo "No new deposits were done, therefore no report was sent."
 fi
@@ -117,5 +139,6 @@ fi
 echo -n "Remove generated report files..."
 rm -f $REPORT_SUMMARY && \
 rm -f $REPORT_SUMMARY_24 && \
+rm -f $REPORT_FULL && \
 rm -f $REPORT_FULL_24
 exit_if_failed "removing generated report file failed"
