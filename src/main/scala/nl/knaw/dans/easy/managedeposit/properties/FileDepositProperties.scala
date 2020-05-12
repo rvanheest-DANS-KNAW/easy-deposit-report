@@ -215,7 +215,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
 
   def getNumberOfContinuedDeposits: Try[Int] = Try {
     if (deposit.exists)
-      deposit.list.count(_.name.toString.matches("""^.*\.zip\.\d+$"""))
+      deposit.list.count(_.name.matches("""^.*\.zip\.\d+$"""))
     else 0
   }
 
