@@ -16,6 +16,7 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
+import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
@@ -25,11 +26,24 @@ import scala.util.{ Failure, Success, Try }
 class FileDepositPropertiesRepository(sword2DepositsDir: File,
                                       ingestFlowInbox: File,
                                       ingestFlowInboxArchived: Option[File],
-                                  )(implicit dansDoiPrefixes: List[String]) extends DepositPropertiesRepository with DebugEnhancedLogging {
+                                     )(implicit dansDoiPrefixes: List[String]) extends DepositPropertiesRepository with DebugEnhancedLogging {
 
   private def listDeposits(dir: File, location: String): Stream[FileDepositProperties] = {
     dir.list.toStream
       .collect { case file if file.isDirectory => new FileDepositProperties(file, location) }
+  }
+
+  override def load(depositId: DepositId): Try[DepositProperties] = {
+    // @formatter:off
+    (
+      (sword2DepositsDir -> "SWORD2") #::
+        (ingestFlowInbox -> "INGEST_FLOW") #::
+        ingestFlowInboxArchived.map(_ -> "INGEST_FLOW_ARCHIVED").toStream
+    )
+    // @formatter:on
+      .map { case (dir, location) => (dir / depositId) -> location }
+      .collectFirst { case (deposit, location) if deposit.exists => Success(new FileDepositProperties(deposit, location)) }
+      .getOrElse(Failure(DepositDoesNotExist(depositId)))
   }
 
   override def listReportData(depositor: Option[DepositorId],
@@ -47,7 +61,7 @@ class FileDepositPropertiesRepository(sword2DepositsDir: File,
       .sortBy(_.creationTimestamp)
   }
 
-  override def findByDatasetId(datasetId: DatasetId): Try[DepositProperties] = {
+  override def getCurationParametersByDatasetId(datasetId: DatasetId): Try[(DepositId, Option[State])] = {
     listDeposits(ingestFlowInbox, "INGEST_FLOW")
       .map(props => props.validateUserCanReadTheDepositDirectoryAndTheDepositProperties().map(_ => props))
       .collectFirst {
@@ -55,6 +69,12 @@ class FileDepositPropertiesRepository(sword2DepositsDir: File,
         case s @ Success(props) if props.getFedoraIdentifier.fold(_ => false, _.contains(datasetId)) => s
       }
       .getOrElse(Failure(new IllegalArgumentException(s"No deposit found for datatsetId $datasetId")))
+      .flatMap(props => {
+        for {
+          depositId <- props.getDepositId
+          stateLabel <- props.getStateLabel
+        } yield depositId -> stateLabel
+      })
   }
 
   override def listDepositsToBeCleaned(deleteParams: DeleteParameters): Try[Stream[DepositProperties]] = Try {

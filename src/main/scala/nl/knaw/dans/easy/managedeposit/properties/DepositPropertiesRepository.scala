@@ -15,15 +15,18 @@
  */
 package nl.knaw.dans.easy.managedeposit.properties
 
+import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 
 import scala.util.Try
 
 trait DepositPropertiesRepository {
 
+  def load(depositId: DepositId): Try[DepositProperties]
+
   def listReportData(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[Stream[DepositInformation]]
 
-  def findByDatasetId(datasetId: DatasetId): Try[DepositProperties]
+  def getCurationParametersByDatasetId(datasetId: DatasetId): Try[(DepositId, Option[State])]
   
   def listDepositsToBeCleaned(deleteParams: DeleteParameters): Try[Stream[DepositProperties]]
 }

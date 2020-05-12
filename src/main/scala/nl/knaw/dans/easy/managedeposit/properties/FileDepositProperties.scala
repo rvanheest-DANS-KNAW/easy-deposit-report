@@ -134,13 +134,6 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
   def getFedoraIdentifier: Try[Option[String]] = {
     getProperty("identifier.fedora")
   }
-  
-  override def getCurationParameters: Try[(DepositId, Option[State])] = {
-    for {
-      depositId <- getDepositId
-      state <- getStateLabel
-    } yield depositId -> state
-  }
 
   def getStateLabel: Try[Option[State]] = {
     getProperty(stateLabelKey).map(_.flatMap(State.toState))
