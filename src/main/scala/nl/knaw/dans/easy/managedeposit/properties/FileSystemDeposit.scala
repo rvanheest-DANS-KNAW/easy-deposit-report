@@ -45,7 +45,9 @@ trait FileSystemDeposit extends DebugEnhancedLogging {
   }
 
   def getDepositSize: Try[Long] = Try {
-    FileUtils.sizeOfDirectory(depositPath.toJava)
+    if (depositPath.exists)
+      FileUtils.sizeOfDirectory(depositPath.toJava)
+    else 0
   }
 
   def retrieveBagNameFromFilesystem: Option[String] = {
@@ -68,7 +70,7 @@ trait FileSystemDeposit extends DebugEnhancedLogging {
     if (!file.exists || !file.isReadable)
       throw NotReadableException(file)
   }
-  
+
   def validateDepositIsReadable(): Try[Unit] = validateFileIsReadable(depositPath)
 
   /**
