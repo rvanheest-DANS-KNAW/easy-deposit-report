@@ -31,7 +31,9 @@ import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.util.Try
 
-class FileDepositProperties(override val depositPath: Deposit, val location: String) extends DepositProperties with FileSystemDeposit with DebugEnhancedLogging {
+class FileDepositProperties(override val depositPath: Deposit,
+                            override val location: String,
+                           ) extends DepositProperties with FileSystemDeposit with DebugEnhancedLogging {
   private lazy val depositProperties: Try[PropertiesConfiguration] = findDepositProperties
   private lazy val lastModified: Option[DateTime] = getLastModifiedTimestamp.unsafeGetOrThrow
 

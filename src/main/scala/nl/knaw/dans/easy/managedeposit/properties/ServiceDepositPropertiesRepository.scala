@@ -16,6 +16,7 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
+import nl.knaw.dans.lib.error._
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositPropertiesRepository.{ FindByDatasetId, ListDepositsToBeCleaned }
@@ -34,8 +35,17 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
                                          ingestFlowInboxArchived: Option[File],
                                         )(implicit formats: Formats) extends DepositPropertiesRepository {
 
-  override def load(depositId: DepositId): Try[DepositProperties] = Try {
-    new ServiceDepositProperties(depositId, client)
+  override def load(depositId: DepositId): Try[DepositProperties with FileSystemDeposit] = {
+    // @formatter:off
+    (
+      (sword2DepositsDir -> "SWORD2") #::
+        (ingestFlowInbox -> "INGEST_FLOW") #::
+        ingestFlowInboxArchived.map(_ -> "INGEST_FLOW_ARCHIVED").toStream
+    )
+    // @formatter:on
+      .map { case (dir, location) => (dir / depositId) -> location }
+      .collectFirst { case (deposit, location) if deposit.exists => Success(new ServiceDepositProperties(depositId, deposit, location, client)) }
+      .getOrElse(Failure(DepositDoesNotExist(depositId)))
   }
 
   override def listReportData(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[Stream[DepositInformation]] = ???
@@ -87,18 +97,7 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
         )(_.deposits.pageInfo)
           .map(_.map(_.deposits))
       }
-      .map(_.toStream.flatMap(_.edges.map(_.node.depositId).map(mkDepositProperties)))
-  }
-
-  private def mkDepositProperties(depositId: DepositId): DepositProperties with FileSystemDeposit = {
-    new ServiceDepositProperties(depositId, client) with FileSystemDeposit {
-      override val depositPath: Deposit = {
-        (sword2DepositsDir #:: ingestFlowInbox #:: ingestFlowInboxArchived.toStream)
-          .map(_ / depositId)
-          .find(_.exists)
-          .getOrElse { throw DepositDoesNotExist(depositId) }
-      }
-    }
+      .map(_.toStream.flatMap(_.edges.map(_.node.depositId).map(load(_).unsafeGetOrThrow)))
   }
 }
 

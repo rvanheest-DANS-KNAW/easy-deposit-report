@@ -18,7 +18,7 @@ package nl.knaw.dans.easy.managedeposit.properties
 import java.util.UUID
 
 import nl.knaw.dans.easy.managedeposit.State
-import nl.knaw.dans.easy.managedeposit.fixture.TestSupportFixture
+import nl.knaw.dans.easy.managedeposit.fixture.{ FileSystemTestDataFixture, TestSupportFixture }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
@@ -30,7 +30,9 @@ import scalaj.http.{ BaseHttp, Http }
 
 import scala.util.Success
 
-class ServiceDepositPropertiesSpec extends TestSupportFixture with BeforeAndAfterAll {
+class ServiceDepositPropertiesSpec extends TestSupportFixture
+  with BeforeAndAfterAll
+  with FileSystemTestDataFixture {
 
   // configure the mock server
   private val server = new MockWebServer
@@ -41,8 +43,8 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture with BeforeAndAfte
   implicit val http: BaseHttp = Http
   implicit val formats: Formats = DefaultFormats
   private val client = new GraphQLClient(baseUrl.url())
-  private val depositId = UUID.randomUUID().toString
-  private val properties = new ServiceDepositProperties(depositId, client)
+  private val depositId = depositOne.name
+  private val properties = new ServiceDepositProperties(depositId, depositOne, "SWORD2", client)
 
   override protected def afterAll(): Unit = {
     server.shutdown()

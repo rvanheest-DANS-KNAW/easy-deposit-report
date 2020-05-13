@@ -18,7 +18,7 @@ package nl.knaw.dans.easy.managedeposit.properties
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.{ SetCurationParameters, SetState }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
-import nl.knaw.dans.easy.managedeposit.{ DepositId, DepositInformation }
+import nl.knaw.dans.easy.managedeposit.{ Deposit, DepositId, DepositInformation }
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.json4s.JsonAST.{ JBool, JString }
@@ -28,7 +28,11 @@ import org.json4s.{ Formats, JValue }
 
 import scala.util.Try
 
-class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(implicit formats: Formats) extends DepositProperties with DebugEnhancedLogging {
+class ServiceDepositProperties(depositId: DepositId,
+                               override val depositPath: Deposit,
+                               override val location: String,
+                               client: GraphQLClient,
+                              )(implicit formats: Formats) extends DepositProperties with FileSystemDeposit with DebugEnhancedLogging {
 
   private def format(json: JValue): String = JsonMethods.compact(JsonMethods.render(json))
 
