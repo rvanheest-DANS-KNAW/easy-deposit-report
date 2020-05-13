@@ -16,12 +16,13 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import nl.knaw.dans.easy.managedeposit.State.State
-import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.SetCurationParameters
+import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.{ SetCurationParameters, SetState }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.managedeposit.{ DepositId, DepositInformation }
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.json4s.JsonAST.{ JBool, JString }
+import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods
 import org.json4s.{ Formats, JValue }
 
@@ -37,7 +38,18 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
 
   override def properties: Map[String, String] = ???
 
-  override def setState(label: State, description: String): Try[Unit] = ???
+  override def setState(label: State, description: String): Try[Unit] = {
+    val setStateVariables = Map(
+      "depositId" -> depositId,
+      "label" -> label.toString,
+      "description" -> description,
+    )
+
+    client.doQuery(SetState.query, SetState.operationName, setStateVariables)
+      .toTry
+      .doIfSuccess(logMutationOutput(SetState.operationName))
+      .map(_ => ())
+  }
 
   override def getDepositInformation(implicit dansDoiPrefixes: List[String]): Try[DepositInformation] = ???
 
@@ -63,6 +75,19 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
 }
 
 object ServiceDepositProperties {
+
+  object SetState {
+    val operationName = "SetState"
+    val query: String =
+      """mutation SetState($depositId: UUID!, $label: StateLabel!, $description: String!) {
+        |  updateState(input: {depositId: $depositId, label: $label, description: $description}) {
+        |    state {
+        |      label
+        |      description
+        |    }
+        |  }
+        |}""".stripMargin
+  }
 
   object SetCurationParameters {
     val operationName = "SetCurationParameters"

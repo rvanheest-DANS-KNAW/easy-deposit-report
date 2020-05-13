@@ -53,8 +53,31 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture with BeforeAndAfte
 
   }
 
-  "setState" should "???" ignore { // TODO test after implementation
+  "setState" should "call the GraphQL service to update the state" in {
+    val response =
+      """{
+        |  "data": {
+        |    "updateState": {
+        |      "state": {
+        |        "label": "ARCHIVED",
+        |        "description": "deposit is archived"
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
 
+    properties.setState(State.ARCHIVED, "deposit is archived") shouldBe a[Success[_]]
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositProperties.SetState.query) ~
+        ("operationName" -> ServiceDepositProperties.SetState.operationName) ~
+        ("variables" -> {
+          ("depositId" -> depositId) ~
+            ("label" -> State.ARCHIVED.toString) ~
+            ("description" -> "deposit is archived")
+        })
+    }
   }
 
   "getDepositInformation" should "???" ignore { // TODO test after implementation
