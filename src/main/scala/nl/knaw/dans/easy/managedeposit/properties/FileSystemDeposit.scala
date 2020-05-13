@@ -20,6 +20,7 @@ import nl.knaw.dans.easy.managedeposit.properties.FileSystemDeposit.depositPrope
 import nl.knaw.dans.easy.managedeposit.{ Deposit, NotReadableException }
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
+import org.apache.commons.io.FileUtils
 
 import scala.util.{ Failure, Success, Try }
 
@@ -34,6 +35,25 @@ trait FileSystemDeposit extends DebugEnhancedLogging {
    */
   def listDepositFiles: Iterator[File] = {
     depositPath.list
+  }
+
+  def getNumberOfContinuedDeposits: Try[Int] = Try {
+    if (depositPath.exists)
+      depositPath.list.count(_.name.matches("""^.*\.zip\.\d+$"""))
+    else 0
+  }
+
+  def getDepositSize: Try[Long] = Try {
+    FileUtils.sizeOfDirectory(depositPath.toJava)
+  }
+
+  def retrieveBagNameFromFilesystem: Option[String] = {
+    depositPath.list.collect {
+      case child if child.isDirectory => child.name
+    }.toList match {
+      case child :: Nil => Option(child)
+      case _ => Option.empty
+    }
   }
 
   def validateFilesInDepositDirectoryAreReadable(): Try[Unit] = {

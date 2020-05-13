@@ -24,7 +24,6 @@ import nl.knaw.dans.easy.managedeposit.properties.FileSystemDeposit.depositPrope
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
-import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.{ BooleanUtils, StringUtils }
 import org.joda.time.{ DateTime, DateTimeZone, Duration }
 
@@ -114,7 +113,7 @@ class FileDepositProperties(override val depositPath: Deposit, val location: Str
 
   private def doGetLastModifiedStamp(): Option[DateTime] = {
     Try {
-      depositPath.list
+      listDepositFiles
         .map(_.lastModifiedTime.toEpochMilli)
         .max // if deposit.list is empty, max returns an UnsupportedOperationException
     }.fold(_ => Option.empty, Option(_))
@@ -158,23 +157,8 @@ class FileDepositProperties(override val depositPath: Deposit, val location: Str
     getProperty("deposit.origin")
   }
 
-  def getNumberOfContinuedDeposits: Try[Int] = Try {
-    if (depositPath.exists)
-      depositPath.list.count(_.name.matches("""^.*\.zip\.\d+$"""))
-    else 0
-  }
-
   def getBagDirName: Try[Option[String]] = {
     getProperty("bag-store.bag-name").map(_.orElse(retrieveBagNameFromFilesystem))
-  }
-
-  private def retrieveBagNameFromFilesystem: Option[String] = {
-    depositPath.list.collect {
-      case child if child.isDirectory => child.name
-    }.toList match {
-      case child :: Nil => Option(child)
-      case _ => Option.empty
-    }
   }
 
   override def getDepositInformation(implicit dansDoiPrefixes: List[String]): Try[DepositInformation] = {
@@ -190,7 +174,7 @@ class FileDepositProperties(override val depositPath: Deposit, val location: Str
       creationTimestamp <- getCreationTime
       lastModified <- getLastModifiedTimestamp
       continuedDeposits <- getNumberOfContinuedDeposits
-      storageSpace = FileUtils.sizeOfDirectory(depositPath.toJava)
+      storageSpace <- getDepositSize
       depositOrigin <- getDepositOrigin
       bagDirName <- getBagDirName
     } yield DepositInformation(
