@@ -16,9 +16,9 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import nl.knaw.dans.easy.managedeposit.State.State
-import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.{ GetDepositInformation, SetCurationParameters, SetState }
-import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.managedeposit._
+import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.{ DeleteDepositProperties, GetDepositInformation, SetCurationParameters, SetState }
+import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.json4s.JsonAST.{ JBool, JString }
@@ -105,7 +105,16 @@ class ServiceDepositProperties(depositId: DepositId,
       .map(_ => ())
   }
 
-  override def deleteDepositProperties(): Try[Unit] = ???
+  override def deleteDepositProperties(): Try[Unit] = {
+    val deleteDepositVariables = Map(
+      "depositId" -> depositId,
+    )
+
+    client.doQuery(DeleteDepositProperties.query, DeleteDepositProperties.operationName, deleteDepositVariables)
+      .toTry
+      .doIfSuccess(logMutationOutput(DeleteDepositProperties.operationName))
+      .map(_ => ())
+  }
 }
 
 object ServiceDepositProperties {
@@ -191,6 +200,16 @@ object ServiceDepositProperties {
         |    isCurationPerformed {
         |      value
         |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object DeleteDepositProperties {
+    val operationName = "DeleteDepositProperties"
+    val query: String =
+      """mutation DeleteDeposit($depositId: UUID!) {
+        |  deleteDeposits(input: {depositIds: [$depositId]}) {
+        |    depositIds
         |  }
         |}""".stripMargin
   }

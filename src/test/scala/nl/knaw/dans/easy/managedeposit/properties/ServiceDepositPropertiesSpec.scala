@@ -176,4 +176,26 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture
         })
     }
   }
+  
+  "deleteDepositProperties" should "call the GraphQL service to delete the properties of a specific deposit" in {
+    val response =
+      """{
+        |  "data": {
+        |    "deleteDeposits": {
+        |      "depositIds": [
+        |        "aba410b6-1a55-40b2-9ebe-6122aad00285"
+        |      ]
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
+
+    properties.deleteDepositProperties() shouldBe a[Success[_]]
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositProperties.DeleteDepositProperties.query) ~
+        ("operationName" -> ServiceDepositProperties.DeleteDepositProperties.operationName) ~
+        ("variables" -> ("depositId" -> depositId))
+    }
+  }
 }
