@@ -31,7 +31,10 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient)(implicit formats
     } yield result
   }
 
-  override def listDepositsToBeCleaned(deleteParams: managedeposit.DeleteParameters): Try[Stream[DepositProperties]] = ???
+  override def listDepositsToBeCleaned(filterOnDepositor: Option[DepositorId],
+                                       filterOnAge: Age,
+                                       filterOnState: State,
+                                      ): Try[Stream[DepositProperties with FileSystemDeposit]] = ???
 }
 
 object ServiceDepositPropertiesRepository {

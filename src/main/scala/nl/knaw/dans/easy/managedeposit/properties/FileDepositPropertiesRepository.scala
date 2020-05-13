@@ -53,7 +53,7 @@ class FileDepositPropertiesRepository(sword2DepositsDir: File,
     listDeposits(sword2DepositsDir, "SWORD2")
       .append(listDeposits(ingestFlowInbox, "INGEST_FLOW"))
       .append(ingestFlowInboxArchived.map(listDeposits(_, "INGEST_FLOW_ARCHIVED")).getOrElse(Stream.empty))
-      .withFilter(_.isValidDeposit)
+      .withFilter(_.depositIsReadable)
       .withFilter(_.hasDepositor(depositor))
       .withFilter(_.hasDatamanager(datamanager))
       .withFilter(_.isOlderThan(age))
@@ -77,14 +77,17 @@ class FileDepositPropertiesRepository(sword2DepositsDir: File,
       })
   }
 
-  override def listDepositsToBeCleaned(deleteParams: DeleteParameters): Try[Stream[DepositProperties]] = Try {
+  override def listDepositsToBeCleaned(filterOnDepositor: Option[DepositorId],
+                                       filterOnAge: Age,
+                                       filterOnState: State,
+                                      ): Try[Stream[DepositProperties with FileSystemDeposit]] = Try {
     listDeposits(sword2DepositsDir, "SWORD2")
       .append(listDeposits(ingestFlowInbox, "INGEST_FLOW"))
       .append(ingestFlowInboxArchived.map(listDeposits(_, "INGEST_FLOW_ARCHIVED")).getOrElse(Stream.empty))
-      .withFilter(_.isValidDeposit)
-      .withFilter(_.hasDepositor(deleteParams.filterOnDepositor))
-      .withFilter(_.depositAgeIsLargerThanRequiredAge(deleteParams.age))
-      .withFilter(_.hasState(deleteParams.state))
+      .withFilter(_.depositIsReadable)
+      .withFilter(_.hasDepositor(filterOnDepositor))
+      .withFilter(_.depositAgeIsLargerThanRequiredAge(filterOnAge))
+      .withFilter(_.hasState(filterOnState))
       .map(identity)
   }
 }

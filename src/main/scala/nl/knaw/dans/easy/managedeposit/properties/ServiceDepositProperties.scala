@@ -1,6 +1,5 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
-import nl.knaw.dans.easy.managedeposit
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.SetCurationParameters
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
@@ -23,6 +22,10 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
 
   override def properties: Map[String, String] = ???
 
+  override def setState(label: State, description: String): Try[Unit] = ???
+
+  override def getDepositInformation(implicit dansDoiPrefixes: List[String]): Try[DepositInformation] = ???
+
   override def setCurationParameters(dansDoiRegistered: Boolean, newState: State, newDescription: String): Try[Unit] = {
     implicit val convertJson: Any => JValue = {
       case s: String => JString(s)
@@ -41,7 +44,7 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
       .map(_ => ())
   }
 
-  override def deleteDeposit(deleteParams: managedeposit.DeleteParameters)(implicit dansDoiPrefixes: List[String]): Try[Option[DepositInformation]] = ???
+  override def deleteDepositProperties(): Try[Unit] = ???
 }
 
 object ServiceDepositProperties {

@@ -27,6 +27,9 @@ trait DepositPropertiesRepository {
   def listReportData(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[Stream[DepositInformation]]
 
   def getCurationParametersByDatasetId(datasetId: DatasetId): Try[(DepositId, Option[State])]
-  
-  def listDepositsToBeCleaned(deleteParams: DeleteParameters): Try[Stream[DepositProperties]]
+
+  def listDepositsToBeCleaned(filterOnDepositor: Option[DepositorId],
+                              filterOnAge: Age,
+                              filterOnState: State,
+                             ): Try[Stream[DepositProperties with FileSystemDeposit]]
 }

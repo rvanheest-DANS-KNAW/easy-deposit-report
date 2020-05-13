@@ -17,10 +17,10 @@ package nl.knaw.dans.easy.managedeposit.properties
 
 import java.io.FileNotFoundException
 
-import better.files.File
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.easy.managedeposit.properties.FileDepositProperties._
+import nl.knaw.dans.easy.managedeposit.properties.FileSystemDeposit.depositPropertiesFileName
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.configuration.PropertiesConfiguration
@@ -30,17 +30,15 @@ import org.joda.time.{ DateTime, DateTimeZone, Duration }
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
-import scala.util.{ Failure, Success, Try }
+import scala.util.Try
 
-class FileDepositProperties(deposit: Deposit, val location: String) extends DepositProperties with DebugEnhancedLogging {
+class FileDepositProperties(override val depositPath: Deposit, val location: String) extends DepositProperties with FileSystemDeposit with DebugEnhancedLogging {
   private lazy val depositProperties: Try[PropertiesConfiguration] = findDepositProperties
   private lazy val lastModified: Option[DateTime] = getLastModifiedTimestamp.unsafeGetOrThrow
 
-  private def depositPropertiesFilePath: File = deposit / depositPropertiesFileName
-
   private def findDepositProperties: Try[PropertiesConfiguration] = Try {
     if (depositPropertiesFilePath.exists) {
-      debug(s"Getting info from $deposit")
+      debug(s"Getting info from $depositPath")
       new PropertiesConfiguration() {
         setDelimiterParsingDisabled(true)
         setFile(depositPropertiesFilePath.toJava)
@@ -48,7 +46,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
       }
     }
     else
-      throw new FileNotFoundException(s"$depositPropertiesFileName does not exist for $deposit")
+      throw new FileNotFoundException(s"$depositPropertiesFileName does not exist for $depositPath")
   }
 
   override def properties: Map[String, String] = {
@@ -58,7 +56,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
           .map(key => key -> props.getString(key))
           .toMap
       })
-      .getOrElse(Map.empty) + ("depositId" -> deposit.name)
+      .getOrElse(Map.empty) + ("depositId" -> depositPath.name)
   }
 
   private def getProperty(key: String): Try[Option[String]] = {
@@ -66,7 +64,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
   }
 
   def getDepositId: Try[DepositId] = {
-    getProperty(depositIdKey).map(_.getOrElse(deposit.name))
+    getProperty(depositIdKey).map(_.getOrElse(depositPath.name))
   }
 
   def hasDepositor(filterOnDepositor: Option[DepositorId]): Boolean = {
@@ -116,7 +114,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
 
   private def doGetLastModifiedStamp(): Option[DateTime] = {
     Try {
-      deposit.list
+      depositPath.list
         .map(_.lastModifiedTime.toEpochMilli)
         .max // if deposit.list is empty, max returns an UnsupportedOperationException
     }.fold(_ => Option.empty, Option(_))
@@ -147,7 +145,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
     getProperty(stateDescriptionKey)
   }
 
-  def setState(label: State, description: String): Try[Unit] = {
+  override def setState(label: State, description: String): Try[Unit] = {
     for {
       dp <- depositProperties
       _ = dp.setProperty(stateLabelKey, label.toString)
@@ -160,62 +158,9 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
     getProperty("deposit.origin")
   }
 
-  /**
-   * Returns whether the deposit is valid, also logs a warn if it is not.
-   *
-   * @return Boolean if the deposit is readable and contains the expected deposit.properties file
-   */
-  def isValidDeposit: Boolean = {
-    validateUserCanReadTheDepositDirectoryAndTheDepositProperties()
-      .doIfFailure { case t: Throwable => logger.warn(s"[${ deposit.name }] was invalid: ${ t.getMessage }") }
-      .isSuccess
-  }
-
-  def validateUserCanReadTheDepositDirectoryAndTheDepositProperties(): Try[Unit] = {
-    for {
-      _ <- validateThatDepositDirectoryIsReadable()
-      _ <- validateUserRightsForDepositDir()
-      _ <- validateThatDepositPropertiesIsReadable()
-      _ <- validateUserRightsForPropertiesFile()
-    } yield ()
-  }
-
-  private def validateThatDepositDirectoryIsReadable(): Try[Unit] = {
-    validateThatFileIsReadable(deposit)
-  }
-
-  private def validateThatDepositPropertiesIsReadable(): Try[Unit] = {
-    validateThatFileIsReadable(depositPropertiesFilePath)
-  }
-
-  private def validateFilesInDepositDirectoryAreReadable(): Try[Unit] = {
-    deposit.list
-      .map(file => validateThatFileIsReadable(file.path.toRealPath()))
-      .collectFirst { case f @ Failure(_: Exception) => f }
-      .getOrElse(Success(()))
-  }
-
-  private def validateThatFileIsReadable(file: File): Try[Unit] = Try {
-    if (!file.isReadable)
-      throw NotReadableException(file)
-  }
-
-  private def validateUserRightsForDepositDir(): Try[Unit] = {
-    validateUserRightsForFile(deposit)
-  }
-
-  private def validateUserRightsForPropertiesFile(): Try[Unit] = {
-    validateUserRightsForFile(depositPropertiesFilePath)
-  }
-
-  private def validateUserRightsForFile(file: File): Try[Unit] = Try {
-    if (file.exists && !file.isReadable)
-      throw NotReadableException(file)
-  }
-
   def getNumberOfContinuedDeposits: Try[Int] = Try {
-    if (deposit.exists)
-      deposit.list.count(_.name.matches("""^.*\.zip\.\d+$"""))
+    if (depositPath.exists)
+      depositPath.list.count(_.name.matches("""^.*\.zip\.\d+$"""))
     else 0
   }
 
@@ -224,7 +169,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
   }
 
   private def retrieveBagNameFromFilesystem: Option[String] = {
-    deposit.list.collect {
+    depositPath.list.collect {
       case child if child.isDirectory => child.name
     }.toList match {
       case child :: Nil => Option(child)
@@ -232,7 +177,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
     }
   }
 
-  def getDepositInformation(implicit dansDoiPrefixes: List[String]): Try[DepositInformation] = {
+  override def getDepositInformation(implicit dansDoiPrefixes: List[String]): Try[DepositInformation] = {
     for {
       depositId <- getDepositId
       depositor <- getDepositorId
@@ -245,7 +190,7 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
       creationTimestamp <- getCreationTime
       lastModified <- getLastModifiedTimestamp
       continuedDeposits <- getNumberOfContinuedDeposits
-      storageSpace = FileUtils.sizeOfDirectory(deposit.toJava)
+      storageSpace = FileUtils.sizeOfDirectory(depositPath.toJava)
       depositOrigin <- getDepositOrigin
       bagDirName <- getBagDirName
     } yield DepositInformation(
@@ -278,61 +223,12 @@ class FileDepositProperties(deposit: Deposit, val location: String) extends Depo
     } yield ()
   }
 
-  override def deleteDeposit(deleteParams: DeleteParameters)(implicit dansDoiPrefixes: List[String]): Try[Option[DepositInformation]] = {
-    def doDelete(depositorId: DepositorId, stateLabel: State): Try[Boolean] = {
-      if (deleteParams.onlyData)
-        deleteOnlyDataFromDeposit(deleteParams.doUpdate, depositorId, stateLabel)
-          .flatMap {
-            case b @ true if deleteParams.doUpdate =>
-              deleteParams.newState
-                .map { case (newStateLabel, newStateDescription) => setState(newStateLabel, newStateDescription) }
-                .getOrElse(Success(()))
-                .map(_ => b)
-            case b => Success(b)
-          }
-      else
-        deleteDepositDirectory(deleteParams.doUpdate, depositorId, stateLabel)
-    }
-
-    for {
-      depositInfo <- getDepositInformation
-      depositorId <- getDepositorId.map(_.getOrElse("<unknown>"))
-      stateLabel <- getStateLabel.map(_.getOrElse(State.UNKNOWN))
-      deletableFiles <- doDelete(depositorId, stateLabel)
-    } yield if (deletableFiles) Some(depositInfo)
-            else None
-  }
-
-  private def deleteOnlyDataFromDeposit(doUpdate: Boolean, depositorId: DepositorId, depositState: State): Try[Boolean] = Try {
-    var filesToDelete = false
-    for (file <- deposit.list
-         if file.name != depositPropertiesFileName) {
-      filesToDelete = true
-      validateThatFileIsReadable(file)
-        .doIfSuccess(_ => doDeleteDataFromDeposit(doUpdate, depositorId, depositState, file)).unsafeGetOrThrow
-    }
-    filesToDelete
-  }
-
-  private def doDeleteDataFromDeposit(doUpdate: Boolean, depositorId: DepositorId, depositState: State, file: File): Unit = {
-    if (doUpdate) {
-      logger.info(s"DELETE data from deposit for $depositorId from $depositState $deposit")
-      if (file.isDirectory) FileUtils.deleteDirectory(file.toJava)
-      else file.delete()
-    }
-  }
-
-  private def deleteDepositDirectory(doUpdate: Boolean, depositorId: DepositorId, depositState: State): Try[Boolean] = Try {
-    if (doUpdate) {
-      logger.info(s"DELETE deposit for $depositorId from $depositState $deposit")
-      FileUtils.deleteDirectory(deposit.toJava)
-    }
-    true
+  override def deleteDepositProperties(): Try[Unit] = Try {
+    deleteFile(depositPropertiesFilePath)
   }
 }
 
 object FileDepositProperties {
-  val depositPropertiesFileName = "deposit.properties"
   val depositIdKey = "bag-store.bag-id"
   val stateLabelKey = "state.label"
   val stateDescriptionKey = "state.description"
