@@ -16,9 +16,9 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import nl.knaw.dans.easy.managedeposit.State.State
-import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.{ SetCurationParameters, SetState }
+import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.{ GetDepositInformation, SetCurationParameters, SetState }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
-import nl.knaw.dans.easy.managedeposit.{ Deposit, DepositId, DepositInformation }
+import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.json4s.JsonAST.{ JBool, JString }
@@ -26,7 +26,7 @@ import org.json4s.JsonDSL._
 import org.json4s.native.JsonMethods
 import org.json4s.{ Formats, JValue }
 
-import scala.util.Try
+import scala.util.{ Failure, Try }
 
 class ServiceDepositProperties(depositId: DepositId,
                                override val depositPath: Deposit,
@@ -57,7 +57,35 @@ class ServiceDepositProperties(depositId: DepositId,
       .map(_ => ())
   }
 
-  override def getDepositInformation(implicit dansDoiPrefixes: List[String]): Try[DepositInformation] = ???
+  override def getDepositInformation(implicit dansDoiPrefixes: List[String]): Try[DepositInformation] = {
+    for {
+      json <- client.doQuery(GetDepositInformation.query, GetDepositInformation.operationName, Map("depositId" -> depositId)).toTry
+      deposit = json.extract[GetDepositInformation.Data].deposit
+      numberOfContinuedDeposits <- getNumberOfContinuedDeposits
+      depositSize <- getDepositSize
+      depositInfo <- deposit
+        .map(deposit => Try {
+          DepositInformation(
+            depositId = deposit.depositId,
+            depositor = deposit.depositor.depositorId,
+            datamanager = deposit.curator.map(_.userId),
+            dansDoiRegistered = deposit.doiRegistered,
+            doiIdentifier = deposit.doi.map(_.value),
+            fedoraIdentifier = deposit.fedora.map(_.value),
+            state = deposit.state.map(_.label),
+            description = deposit.state.map(_.description),
+            creationTimestamp = deposit.creationTimestamp,
+            lastModified = deposit.lastModified,
+            numberOfContinuedDeposits = numberOfContinuedDeposits,
+            storageSpace = depositSize,
+            origin = deposit.origin,
+            location = location,
+            bagDirName = deposit.bagName.getOrElse(notAvailable),
+          )
+        })
+        .getOrElse(Failure(DepositDoesNotExist(depositId)))
+    } yield depositInfo
+  }
 
   override def setCurationParameters(dansDoiRegistered: Boolean, newState: State, newDescription: String): Try[Unit] = {
     implicit val convertJson: Any => JValue = {
@@ -90,6 +118,55 @@ object ServiceDepositProperties {
         |    state {
         |      label
         |      description
+        |    }
+        |  }
+        |}""".stripMargin
+  }
+
+  object GetDepositInformation {
+    case class Data(deposit: Option[Deposit])
+    case class Deposit(depositId: DepositId,
+                       depositor: Depositor,
+                       bagName: Option[String],
+                       origin: String,
+                       creationTimestamp: String,
+                       lastModified: String,
+                       state: Option[StateObj],
+                       doi: Option[Identifier],
+                       fedora: Option[Identifier],
+                       doiRegistered: Option[Boolean],
+                       curator: Option[Curator],
+                      )
+    case class Depositor(depositorId: DepositorId)
+    case class StateObj(label: State, description: String)
+    case class Identifier(value: String)
+    case class Curator(userId: String)
+
+    val operationName = "GetDepositInformation"
+    val query: String =
+      """query GetDepositInformation($depositId: UUID!) {
+        |  deposit(id: $depositId) {
+        |    depositId
+        |    depositor {
+        |      depositorId
+        |    }
+        |    bagName
+        |    origin
+        |    creationTimestamp
+        |    lastModified
+        |    state {
+        |      label
+        |      description
+        |    }
+        |    doi: identifier(type: DOI) {
+        |      value
+        |    }
+        |    fedora: identifier(type: FEDORA) {
+        |      value
+        |    }
+        |    doiRegistered
+        |    curator {
+        |      userId
         |    }
         |  }
         |}""".stripMargin

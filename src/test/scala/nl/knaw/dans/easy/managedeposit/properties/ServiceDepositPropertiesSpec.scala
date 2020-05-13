@@ -15,14 +15,13 @@
  */
 package nl.knaw.dans.easy.managedeposit.properties
 
-import java.util.UUID
-
-import nl.knaw.dans.easy.managedeposit.State
 import nl.knaw.dans.easy.managedeposit.fixture.{ FileSystemTestDataFixture, TestSupportFixture }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
+import nl.knaw.dans.easy.managedeposit.{ DepositInformation, State }
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
 import org.json4s.JsonDSL._
+import org.json4s.ext.EnumNameSerializer
 import org.json4s.native.Serialization
 import org.json4s.{ DefaultFormats, Formats }
 import org.scalatest.BeforeAndAfterAll
@@ -41,9 +40,10 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture
   private val baseUrl: HttpUrl = server.url(test_server)
 
   implicit val http: BaseHttp = Http
-  implicit val formats: Formats = DefaultFormats
+  implicit val formats: Formats = DefaultFormats + new EnumNameSerializer(State)
   private val client = new GraphQLClient(baseUrl.url())
   private val depositId = depositOne.name
+  private implicit val dansDoiPrefixes: List[String] = List("10.17026/", "10.5072/")
   private val properties = new ServiceDepositProperties(depositId, depositOne, "SWORD2", client)
 
   override protected def afterAll(): Unit = {
@@ -82,8 +82,61 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture
     }
   }
 
-  "getDepositInformation" should "???" ignore { // TODO test after implementation
+  "getDepositInformation" should "retrieve the required deposit information" in {
+    val response =
+      """{
+        |  "data": {
+        |    "deposit": {
+        |      "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |      "depositor": {
+        |        "depositorId": "user001"
+        |      },
+        |      "bagName": "bag1",
+        |      "origin": "API",
+        |      "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |      "lastModified": "2020-05-12T12:37:07.073Z",
+        |      "state": {
+        |        "label": "REJECTED",
+        |        "description": "ERRRRRR"
+        |      },
+        |      "doi": {
+        |        "value": "10.5072/dans-a1b-cde2"
+        |      },
+        |      "fedora": {
+        |        "value": "easy-dataset:1"
+        |      },
+        |      "doiRegistered": false,
+        |      "curator": {
+        |        "userId": "archie001"
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
 
+    properties.getDepositInformation.success.value shouldBe DepositInformation(
+      depositId = depositId,
+      depositor = "user001",
+      datamanager = Some("archie001"),
+      dansDoiRegistered = Some(false),
+      doiIdentifier = Some("10.5072/dans-a1b-cde2"),
+      fedoraIdentifier = Some("easy-dataset:1"),
+      state = Some(State.REJECTED),
+      description = Some("ERRRRRR"),
+      creationTimestamp = "2018-12-31T23:00:00.000Z",
+      lastModified = "2020-05-12T12:37:07.073Z",
+      numberOfContinuedDeposits = 2,
+      storageSpace = 555L,
+      origin = "API",
+      location = "SWORD2",
+      bagDirName = "bag1",
+    )
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositProperties.GetDepositInformation.query) ~
+        ("operationName" -> ServiceDepositProperties.GetDepositInformation.operationName) ~
+        ("variables" -> ("depositId" -> depositId))
+    }
   }
 
   "setCurationParameters" should "call the GraphQL service to update for curation" in {
