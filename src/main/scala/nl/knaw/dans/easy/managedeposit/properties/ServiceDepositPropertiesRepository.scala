@@ -92,7 +92,7 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
 
   private def mkDepositProperties(depositId: DepositId): DepositProperties with FileSystemDeposit = {
     new ServiceDepositProperties(depositId, client) with FileSystemDeposit {
-      override protected val depositPath: Deposit = {
+      override val depositPath: Deposit = {
         (sword2DepositsDir #:: ingestFlowInbox #:: ingestFlowInboxArchived.toStream)
           .map(_ / depositId)
           .find(_.exists)

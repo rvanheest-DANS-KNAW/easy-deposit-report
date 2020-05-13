@@ -15,11 +15,24 @@
  */
 package nl.knaw.dans.easy.managedeposit.fixture
 
-import org.scalatest.{ Inside, OptionValues, TryValues }
-import org.scalatest.enablers.Existence
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import java.util.TimeZone
 
-trait TestSupportFixture extends AnyFlatSpec with Matchers with OptionValues with TryValues with Inside {
-  implicit def existenceOfFile[FILE <: better.files.File]: Existence[FILE] = _.exists
+import org.joda.time.{ DateTime, DateTimeUtils, DateTimeZone }
+import org.scalatest.BeforeAndAfterAll
+
+trait FixedDateTime extends BeforeAndAfterAll {
+  this: TestSupportFixture =>
+
+  val nowYMD = "2018-03-22"
+  val now = s"${ nowYMD }T21:43:01.576"
+  val nowUTC = s"${ nowYMD }T20:43:01Z"
+  /** Causes DateTime.now() to return a predefined value. */
+  DateTimeUtils.setCurrentMillisFixed(new DateTime(nowUTC).getMillis)
+  DateTimeZone.setDefault(DateTimeZone.forTimeZone(TimeZone.getTimeZone("Europe/Amsterdam")))
+
+  override protected def afterAll(): Unit = {
+    DateTimeUtils.setCurrentMillisSystem()
+
+    super.afterAll()
+  }
 }

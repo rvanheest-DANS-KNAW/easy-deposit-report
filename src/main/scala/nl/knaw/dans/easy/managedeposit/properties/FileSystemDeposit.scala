@@ -25,7 +25,7 @@ import scala.util.{ Failure, Success, Try }
 
 trait FileSystemDeposit extends DebugEnhancedLogging {
 
-  protected val depositPath: Deposit
+  val depositPath: Deposit
 
   def depositPropertiesFilePath: File = depositPath / depositPropertiesFileName
 
