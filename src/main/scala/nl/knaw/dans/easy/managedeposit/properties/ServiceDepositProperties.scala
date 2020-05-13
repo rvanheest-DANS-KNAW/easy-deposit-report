@@ -36,7 +36,9 @@ class ServiceDepositProperties(depositId: DepositId, client: GraphQLClient)(impl
     logger.debug(s"Mutation $operationName returned ${ format(json) }")
   }
 
-  override def properties: Map[String, String] = ???
+  override def properties: Map[String, String] = {
+    throw new UnsupportedOperationException("You cannot list all properties from the GraphQL service. Please configure the application such that the filesystem deposit.properties are used.")
+  }
 
   override def setState(label: State, description: String): Try[Unit] = {
     val setStateVariables = Map(

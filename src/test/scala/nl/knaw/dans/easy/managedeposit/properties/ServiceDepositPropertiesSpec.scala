@@ -49,8 +49,8 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture with BeforeAndAfte
     super.afterAll()
   }
 
-  "properties" should "???" ignore { // TODO test after implementation
-
+  "properties" should "throw an UnsupportedOperationException" in {
+    an[UnsupportedOperationException] shouldBe thrownBy(properties.properties)
   }
 
   "setState" should "call the GraphQL service to update the state" in {
