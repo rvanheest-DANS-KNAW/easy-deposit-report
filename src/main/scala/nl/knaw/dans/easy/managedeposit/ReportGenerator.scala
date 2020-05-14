@@ -21,58 +21,33 @@ import java.util.Calendar
 
 import nl.knaw.dans.easy.managedeposit.State._
 import nl.knaw.dans.easy.managedeposit.commands.Curation.requestChangesDescription
+import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 import org.apache.commons.csv.CSVFormat
 import resource.managed
 
 import scala.util.Try
 
 object ReportGenerator {
-  private val KB = 1024L
-  private val MB = 1024L * KB
-  private val GB = 1024L * MB
-  private val TB = 1024L * GB
 
-  def outputSummary(deposits: Stream[DepositInformation])(implicit printStream: PrintStream): Try[Unit] = Try {
-    val depositsGroupedByState = groupAndSortDepositsAlphabeticallyByState(deposits)
+  def outputSummary(summaryData: SummaryReportData)(implicit printStream: PrintStream): Try[Unit] = Try {
+    val perState = summaryData.totalPerState.toSeq.sortBy { case (state, _) => state }
+    lazy val maxStateLength = summaryData.totalPerState.keySet.map(_.toString.length).max
 
     val now = Calendar.getInstance().getTime
     val format = new SimpleDateFormat("yyyy-MM-dd")
     val currentTime = format.format(now)
-    lazy val stateLength = depositsGroupedByState.map { case (state, _) => state.toString.length }.max
 
     printStream.println("Grand totals:")
     printStream.println("-------------")
     printStream.println(s"Timestamp          : $currentTime")
-    printStream.println(f"Number of deposits : ${ deposits.size }%10d")
-    printStream.println(s"Total space        : ${ formatStorageSize(deposits.map(_.storageSpace).sum) }")
+    printStream.println(f"Number of deposits : ${ summaryData.total }%10d")
     printStream.println()
     printStream.println("Per state:")
     printStream.println("----------")
-    for ((state, toBePrintedDeposits) <- depositsGroupedByState) {
-      printStream.println(formatCountAndSize(toBePrintedDeposits, state, stateLength))
+    for ((state, count) <- perState) {
+      printStream.println(s"%-${ maxStateLength }s : %5d".format(state, count))
     }
     printStream.println()
-  }
-
-  def groupAndSortDepositsAlphabeticallyByState(deposits: Stream[DepositInformation]): Seq[(State, Stream[DepositInformation])] = {
-    val groupedByState = deposits.groupBy(deposit => deposit.state.getOrElse(UNKNOWN))
-    groupedByState.toSeq.sortBy { case (state, _) => state } //sort alphabetically by state
-  }
-
-  private def formatStorageSize(nBytes: Long): String = {
-    def formatSize(unitSize: Long, unit: String): String = {
-      f"${ nBytes / unitSize.toFloat }%8.1f $unit"
-    }
-
-    if (nBytes > 1.1 * TB) formatSize(TB, "T")
-    else if (nBytes > 1.1 * GB) formatSize(GB, "G")
-    else if (nBytes > 1.1 * MB) formatSize(MB, "M")
-    else if (nBytes > 1.1 * KB) formatSize(KB, "K")
-    else formatSize(1, "B")
-  }
-
-  private def formatCountAndSize(deposits: Seq[DepositInformation], filterOnState: State, maxStateLength: Int): String = {
-    s"%-${ maxStateLength }s : %5d (%s)".format(filterOnState, deposits.size, formatStorageSize(deposits.map(_.storageSpace).sum))
   }
 
   def outputFullReport(deposits: Stream[DepositInformation])(implicit printStream: PrintStream): Try[Unit] = {

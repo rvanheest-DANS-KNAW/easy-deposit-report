@@ -24,6 +24,7 @@ import nl.knaw.dans.easy.managedeposit.ReportGeneratorSpec.ReportType.ReportType
 import nl.knaw.dans.easy.managedeposit.State._
 import nl.knaw.dans.easy.managedeposit.commands.Curation
 import nl.knaw.dans.easy.managedeposit.fixture.TestSupportFixture
+import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 import org.joda.time.DateTime
 import org.scalatest.Inspectors
 
@@ -33,27 +34,15 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
 
   private implicit val dansDoiPrefixes: List[String] = List("10.17026/", "10.5072/")
 
-  "groupDepositsByState" should "return a map with all deposits sorted By their state and null should be mapped to UNKNOWN" in {
-    val deposits: Stream[DepositInformation] = createDeposits
-    val mappedByState = ReportGenerator.groupAndSortDepositsAlphabeticallyByState(deposits).toMap
-    mappedByState.getOrElse(ARCHIVED, Seq()).size shouldBe 2
-    mappedByState.getOrElse(DRAFT, Seq()).size shouldBe 1
-    mappedByState.getOrElse(FINALIZING, Seq()).size shouldBe 1
-    mappedByState.getOrElse(INVALID, Seq()).size shouldBe 1
-    mappedByState.getOrElse(REJECTED, Seq()).size shouldBe 1
-    mappedByState.getOrElse(SUBMITTED, Seq()).size shouldBe 4
-    mappedByState.getOrElse(UNKNOWN, Seq()).size shouldBe 4 // 2 + 2 null values
-  }
-
   "output Summary" should "should contain all deposits" in {
-    val deposits = createDeposits
+    val summarydata = getSummaryReportData(createDeposits)
     val now = Calendar.getInstance().getTime
     val format = new SimpleDateFormat("yyyy-MM-dd")
     val currentTime = format.format(now)
     val baos = new ByteArrayOutputStream()
     val ps = new PrintStream(baos, true)
     try {
-      ReportGenerator.outputSummary(deposits)(ps)
+      ReportGenerator.outputSummary(summarydata)(ps)
     } finally {
       ps.close()
     }
@@ -63,19 +52,18 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
          |-------------
          |Timestamp          : $currentTime
          |Number of deposits :         16
-         |Total space        :      2.0 M
          |
          |Per state:
          |----------
-         |ARCHIVED        :     2 (   252.0 K)
-         |DRAFT           :     1 (   126.0 K)
-         |FEDORA_ARCHIVED :     1 (   126.0 K)
-         |FINALIZING      :     1 (   126.0 K)
-         |IN_REVIEW       :     1 (   126.0 K)
-         |INVALID         :     1 (   126.0 K)
-         |REJECTED        :     1 (   126.0 K)
-         |SUBMITTED       :     4 (   503.9 K)
-         |UNKNOWN         :     4 (   503.9 K)""".stripMargin
+         |ARCHIVED        :     2
+         |DRAFT           :     1
+         |FEDORA_ARCHIVED :     1
+         |FINALIZING      :     1
+         |IN_REVIEW       :     1
+         |INVALID         :     1
+         |REJECTED        :     1
+         |SUBMITTED       :     4
+         |UNKNOWN         :     4""".stripMargin
   }
 
   it should "produce a report when no deposits are found" in {
@@ -85,7 +73,7 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
     val baos = new ByteArrayOutputStream()
     val ps = new PrintStream(baos, true)
     try {
-      ReportGenerator.outputSummary(Stream.empty)(ps)
+      ReportGenerator.outputSummary(getSummaryReportData(Stream.empty))(ps)
     } finally {
       ps.close()
     }
@@ -95,14 +83,13 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
          |-------------
          |Timestamp          : $currentTime
          |Number of deposits :          0
-         |Total space        :      0.0 B
          |
          |Per state:
          |----------""".stripMargin
   }
 
   it should "align the data per state based on the longest state" in {
-    val deposits = createDeposits.filterNot(_.state.exists(FEDORA_ARCHIVED ==))
+    val deposits = getSummaryReportData(createDeposits.filterNot(_.state.exists(FEDORA_ARCHIVED ==)))
     val now = Calendar.getInstance().getTime
     val format = new SimpleDateFormat("yyyy-MM-dd")
     val currentTime = format.format(now)
@@ -119,18 +106,17 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
          |-------------
          |Timestamp          : $currentTime
          |Number of deposits :         15
-         |Total space        :      1.8 M
          |
          |Per state:
          |----------
-         |ARCHIVED   :     2 (   252.0 K)
-         |DRAFT      :     1 (   126.0 K)
-         |FINALIZING :     1 (   126.0 K)
-         |IN_REVIEW  :     1 (   126.0 K)
-         |INVALID    :     1 (   126.0 K)
-         |REJECTED   :     1 (   126.0 K)
-         |SUBMITTED  :     4 (   503.9 K)
-         |UNKNOWN    :     4 (   503.9 K)""".stripMargin
+         |ARCHIVED   :     2
+         |DRAFT      :     1
+         |FINALIZING :     1
+         |IN_REVIEW  :     1
+         |INVALID    :     1
+         |REJECTED   :     1
+         |SUBMITTED  :     4
+         |UNKNOWN    :     4""".stripMargin
   }
 
   "outputErrorReport" should "only print the deposits containing an error" in {
@@ -300,6 +286,16 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
       origin = "SWORD2",
       location = location,
       bagDirName = "baggy",
+    )
+  }
+  
+  private def getSummaryReportData(deposits: Stream[DepositInformation]): SummaryReportData = {
+    SummaryReportData(
+      deposits.length,
+      deposits
+        .map(_.state.getOrElse(State.UNKNOWN))
+        .groupBy(identity)
+        .map { case (state, dps) => state -> dps.length }
     )
   }
 

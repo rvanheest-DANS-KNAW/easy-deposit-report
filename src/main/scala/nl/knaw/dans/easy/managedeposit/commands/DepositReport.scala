@@ -28,7 +28,7 @@ class DepositReport(depositPropertiesFactory: DepositPropertiesRepository)
 
   def summary(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[String] = {
     for {
-      depositInfos <- depositPropertiesFactory.listReportData(depositor, datamanager, age)
+      depositInfos <- depositPropertiesFactory.getSummaryReportData(depositor, datamanager, age)
       _ <- ReportGenerator.outputSummary(depositInfos)
     } yield "End of summary report."
   }
