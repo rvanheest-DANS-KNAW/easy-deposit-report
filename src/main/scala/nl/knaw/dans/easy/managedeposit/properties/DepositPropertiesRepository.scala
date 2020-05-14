@@ -17,12 +17,15 @@ package nl.knaw.dans.easy.managedeposit.properties
 
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
+import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 
 import scala.util.Try
 
 trait DepositPropertiesRepository {
 
   def load(depositId: DepositId): Try[DepositProperties]
+
+  def getSummaryReportData(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[SummaryReportData]
 
   def listReportData(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[Stream[DepositInformation]]
 
@@ -32,4 +35,16 @@ trait DepositPropertiesRepository {
                               filterOnAge: Age,
                               filterOnState: State,
                              ): Try[Stream[DepositProperties with FileSystemDeposit]]
+}
+
+object DepositPropertiesRepository {
+  case class SummaryReportData(total: Int, totalPerState: Map[State, Int])
+  object SummaryReportData {
+    def apply(totalPerState: Map[State, Int]): SummaryReportData = {
+      SummaryReportData(
+        total = totalPerState.values.sum,
+        totalPerState = totalPerState
+      )
+    }
+  }
 }

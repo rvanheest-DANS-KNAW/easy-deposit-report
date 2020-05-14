@@ -19,6 +19,7 @@ import better.files.File
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
+import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositPropertiesRepository.{ FindByDatasetId, ListDepositsToBeCleaned }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.managedeposit.properties.graphql.direction.Forwards
@@ -47,6 +48,11 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
       .collectFirst { case (deposit, location) if deposit.exists => Success(new ServiceDepositProperties(depositId, deposit, location, client)) }
       .getOrElse(Failure(DepositDoesNotExist(depositId)))
   }
+
+  override def getSummaryReportData(depositor: Option[DepositorId],
+                                    datamanager: Option[Datamanager],
+                                    age: Option[Age],
+                                   ): Try[SummaryReportData] = ???
 
   override def listReportData(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[Stream[DepositInformation]] = ???
 

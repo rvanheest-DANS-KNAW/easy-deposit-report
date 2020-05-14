@@ -18,6 +18,7 @@ package nl.knaw.dans.easy.managedeposit.properties
 import better.files.File
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
+import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 
@@ -44,6 +45,24 @@ class FileDepositPropertiesRepository(sword2DepositsDir: File,
       .map { case (dir, location) => (dir / depositId) -> location }
       .collectFirst { case (deposit, location) if deposit.exists => Success(new FileDepositProperties(deposit, location)) }
       .getOrElse(Failure(DepositDoesNotExist(depositId)))
+  }
+
+  override def getSummaryReportData(depositor: Option[DepositorId],
+                                    datamanager: Option[Datamanager],
+                                    age: Option[Age],
+                                   ): Try[SummaryReportData] = Try {
+    SummaryReportData(
+      listDeposits(sword2DepositsDir, "SWORD2")
+        .append(listDeposits(ingestFlowInbox, "INGEST_FLOW"))
+        .append(ingestFlowInboxArchived.map(listDeposits(_, "INGEST_FLOW_ARCHIVED")).getOrElse(Stream.empty))
+        .withFilter(_.depositIsReadable)
+        .withFilter(_.hasDepositor(depositor))
+        .withFilter(_.hasDatamanager(datamanager))
+        .withFilter(_.isOlderThan(age))
+        .flatMap(_.getStateLabel.unsafeGetOrThrow)
+        .groupBy(identity)
+        .mapValues(_.length)
+    )
   }
 
   override def listReportData(depositor: Option[DepositorId],

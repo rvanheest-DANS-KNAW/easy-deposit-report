@@ -69,6 +69,10 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
     super.afterAll()
   }
 
+  "getSummaryReportData" should "???" ignore { // TODO test after implementation
+
+  }
+
   "listReportData" should "???" ignore { // TODO test after implementation
 
   }

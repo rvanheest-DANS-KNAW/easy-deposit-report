@@ -16,7 +16,9 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
+import nl.knaw.dans.easy.managedeposit.State
 import nl.knaw.dans.easy.managedeposit.fixture.{ FileSystemTestDataFixture, TestSupportFixture }
+import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 
 import scala.util.Success
 
@@ -69,6 +71,35 @@ class FileDepositPropertiesRepositorySpec extends TestSupportFixture with FileSy
   
   it should "fail when the deposit does not exist" in {
     repo.load("no-such-deposit").failure.exception shouldBe DepositDoesNotExist("no-such-deposit")
+  }
+  
+  "getSummaryReportData" should "yield the number of datasets per state label" in {
+    repo.getSummaryReportData(Option.empty, Option.empty, Option.empty).success.value shouldBe SummaryReportData(
+      5,
+      Map(
+        State.SUBMITTED -> 4,
+        State.REJECTED -> 1,
+      )
+    )
+  }
+  
+  it should "only yield the numbers for the deposits from user001" in {
+    repo.getSummaryReportData(Option("user001"), Option.empty, Option.empty).success.value shouldBe SummaryReportData(
+      4,
+      Map(
+        State.SUBMITTED -> 3,
+        State.REJECTED -> 1,
+      )
+    )
+  }
+
+  it should "only yield the numbers for the deposits with curator easyadmin" in {
+    repo.getSummaryReportData(Option.empty, Option("easyadmin"), Option.empty).success.value shouldBe SummaryReportData(
+      3,
+      Map(
+        State.SUBMITTED -> 3,
+      )
+    )
   }
   
   // TODO more tests need to be written
