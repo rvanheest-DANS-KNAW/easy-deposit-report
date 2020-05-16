@@ -67,15 +67,16 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
     val ageFilter = age
       .map(age => Map[String, JValue]("laterThan" -> now.minusDays(age).toString(dateTimeFormatter)))
       .getOrElse(Map.empty)
+    val variables = dmFilter ++ ageFilter
 
     depositor
       .map(depositorId => {
-        val vars = Map[String, JValue]("depositorId" -> depositorId) ++ dmFilter ++ ageFilter
+        val vars = Map[String, JValue]("depositorId" -> depositorId) ++ variables
         client.doQuery(GetSummaryReportData.queryWithDepositor, GetSummaryReportData.operationName, vars)
           .map(_.extract[GetSummaryReportData.DataWithDepositor].depositor.mapValues(_.totalCount))
       })
       .getOrElse {
-        client.doQuery(GetSummaryReportData.queryWithoutDepositor, GetSummaryReportData.operationName, dmFilter ++ ageFilter)
+        client.doQuery(GetSummaryReportData.queryWithoutDepositor, GetSummaryReportData.operationName, variables)
           .map(_.extract[GetSummaryReportData.DataWithoutDepositor].mapValues(_.totalCount))
       }
       .map(totals => {
