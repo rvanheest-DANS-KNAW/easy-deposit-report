@@ -9,6 +9,7 @@ SYNOPSIS
     easy-manage-deposit report full [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
     easy-manage-deposit report summary [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
     easy-manage-deposit report error [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
+    easy-manage-deposit report storage [<location>]
     easy-manage-deposit report raw [<location>]
     easy-manage-deposit clean [-d, --data-only] [-s, --state <state>] [-k, --keep <n>] [-l, --new-state-label <state>] [-n, --new-state-description <description>] [-f, --force] [-o, --output] [--do-update] [<depositor>]
     easy-manage-deposit sync-fedora-state <easy-dataset-id>
@@ -16,94 +17,101 @@ SYNOPSIS
 
 ARGUMENTS
 --------
-   
-     Options:
-            -h, --help      Show help message
-            -v, --version   Show version of this program
-          
-          Subcommand: report
-            -h, --help   Show help message
-          
-          Subcommand: report full - creates a full report for a depositor and/or datamanager
-            -a, --age  <arg>           Only report on the deposits that are less than n
-                                       days old. An age argument of n=0 days corresponds
-                                       to 0<=n<1. If this argument is not provided, all
-                                       deposits will be reported on.
-            -m, --datamanager  <arg>   Only report on the deposits that are assigned to
-                                       this datamanager.
-            -h, --help                 Show help message
-          
-           trailing arguments:
-            depositor (not required)
-          ---
-          
-          Subcommand: report summary - creates a summary report for a depositor and/or datamanager
-            -a, --age  <arg>           Only report on the deposits that are less than n
-                                       days old. An age argument of n=0 days corresponds
-                                       to 0<=n<1. If this argument is not provided, all
-                                       deposits will be reported on.
-            -m, --datamanager  <arg>   Only report on the deposits that are assigned to
-                                       this datamanager.
-            -h, --help                 Show help message
-          
-           trailing arguments:
-            depositor (not required)
-          ---
-          
-          Subcommand: report error - creates a report displaying all failed, rejected and invalid deposits for a depositor and/or datamanager
-            -a, --age  <arg>           Only report on the deposits that are less than n
-                                       days old. An age argument of n=0 days corresponds
-                                       to 0<=n<1. If this argument is not provided, all
-                                       deposits will be reported on.
-            -m, --datamanager  <arg>   Only report on the deposits that are assigned to
-                                       this datamanager.
-            -h, --help                 Show help message
-          
-           trailing arguments:
-            depositor (not required)
-          ---
-          
-          Subcommand: report raw - creates a report containing all content of deposit.properties without inferring any properties
-            -h, --help   Show help message
-          
-           trailing arguments:
-            location (required)
-          ---
-          Subcommand: clean - removes deposit with specified state
-            -d, --data-only                      If specified, the deposit.properties and
-                                                 the container file of the deposit are not
-                                                 deleted
-                --do-update                      Do the actual deleting of deposits and
-                                                 updating of deposit.properties
-            -f, --force                          The user is not asked for a confirmation
-            -k, --keep  <arg>                    The deposits whose ages are greater than
-                                                 or equal to the argument n (days) are
-                                                 deleted. An age argument of n=0 days
-                                                 corresponds to 0<=n<1. (default = -1)
-            -n, --new-state-description  <arg>   The state description in
-                                                 deposit.properties after the deposit has
-                                                 been deleted
-            -l, --new-state-label  <arg>         The state label in deposit.properties
-                                                 after the deposit has been deleted
-            -o, --output                         Output a list of depositIds of the
-                                                 deposits that were deleted
-            -s, --state  <arg>                   The deposits with the specified state
-                                                 argument are deleted
-            -h, --help                           Show help message
-            
-           trailing arguments:
-            depositor (not required)
-          ---
-          
-          Subcommand: sync-fedora-state - Syncs a deposit with Fedora, checks if the deposit is properly registered in Fedora and updates the deposit.properties accordingly
-            -h, --help   Show help message
-          
-           trailing arguments:
-            easy-dataset-id (required)   The dataset identifier of the deposit which
-                                         deposit.properties are being synced with Fedora
-          ---
-    
-     
+
+    Options:
+           -h, --help      Show help message
+           -v, --version   Show version of this program
+         
+         Subcommand: report
+           -h, --help   Show help message
+         
+         Subcommand: report full - creates a full report for a depositor and/or datamanager
+           -a, --age  <arg>           Only report on the deposits that are less than n
+                                      days old. An age argument of n=0 days corresponds
+                                      to 0<=n<1. If this argument is not provided, all
+                                      deposits will be reported on.
+           -m, --datamanager  <arg>   Only report on the deposits that are assigned to
+                                      this datamanager.
+           -h, --help                 Show help message
+         
+          trailing arguments:
+           depositor (not required)
+         ---
+         
+         Subcommand: report summary - creates a summary report for a depositor and/or datamanager
+           -a, --age  <arg>           Only report on the deposits that are less than n
+                                      days old. An age argument of n=0 days corresponds
+                                      to 0<=n<1. If this argument is not provided, all
+                                      deposits will be reported on.
+           -m, --datamanager  <arg>   Only report on the deposits that are assigned to
+                                      this datamanager.
+           -h, --help                 Show help message
+         
+          trailing arguments:
+           depositor (not required)
+         ---
+         
+         Subcommand: report error - creates a report displaying all failed, rejected and invalid deposits for a depositor and/or datamanager
+           -a, --age  <arg>           Only report on the deposits that are less than n
+                                      days old. An age argument of n=0 days corresponds
+                                      to 0<=n<1. If this argument is not provided, all
+                                      deposits will be reported on.
+           -m, --datamanager  <arg>   Only report on the deposits that are assigned to
+                                      this datamanager.
+           -h, --help                 Show help message
+         
+          trailing arguments:
+           depositor (not required)
+         ---
+         
+         Subcommand: report storage - creates a report containing the storage space of deposits
+           -h, --help   Show help message
+         
+          trailing arguments:
+           location (required)
+         ---
+         
+         Subcommand: report raw - creates a report containing all content of deposit.properties without inferring any properties
+           -h, --help   Show help message
+         
+          trailing arguments:
+           location (required)
+         ---
+         Subcommand: clean - removes deposit with specified state
+           -d, --data-only                      If specified, the deposit.properties and
+                                                the container file of the deposit are not
+                                                deleted
+               --do-update                      Do the actual deleting of deposits and
+                                                updating of deposit.properties
+           -f, --force                          The user is not asked for a confirmation
+           -k, --keep  <arg>                    The deposits whose ages are greater than
+                                                or equal to the argument n (days) are
+                                                deleted. An age argument of n=0 days
+                                                corresponds to 0<=n<1. (default = -1)
+           -n, --new-state-description  <arg>   The state description in
+                                                deposit.properties after the deposit has
+                                                been deleted
+           -l, --new-state-label  <arg>         The state label in deposit.properties
+                                                after the deposit has been deleted
+           -o, --output                         Output a list of depositIds of the
+                                                deposits that were deleted
+           -s, --state  <arg>                   The deposits with the specified state
+                                                argument are deleted
+           -h, --help                           Show help message
+         
+          trailing arguments:
+           depositor (not required)
+         ---
+         
+         Subcommand: sync-fedora-state - Syncs a deposit with Fedora, checks if the deposit is properly registered in Fedora and updates the deposit.properties accordingly
+           -h, --help   Show help message
+         
+          trailing arguments:
+           easy-dataset-id (required)   The dataset identifier of the deposit which
+                                        deposit.properties are being synced with Fedora
+         ---
+
+
 DESCRIPTION
 -----------
 

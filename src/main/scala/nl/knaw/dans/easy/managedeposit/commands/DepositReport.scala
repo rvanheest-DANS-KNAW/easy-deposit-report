@@ -19,7 +19,8 @@ import java.io.PrintStream
 
 import better.files.File
 import nl.knaw.dans.easy.managedeposit._
-import nl.knaw.dans.easy.managedeposit.properties.{ DepositPropertiesRepository, FileDepositProperties }
+import nl.knaw.dans.easy.managedeposit.properties.{ DepositPropertiesRepository, FileDepositProperties, FileSystemDeposit }
+import nl.knaw.dans.lib.error._
 
 import scala.util.Try
 
@@ -45,6 +46,15 @@ class DepositReport(depositPropertiesFactory: DepositPropertiesRepository)
       depositInfos <- depositPropertiesFactory.listReportData(depositor, datamanager, age)
       _ <- ReportGenerator.outputErrorReport(depositInfos)
     } yield "End of error report."
+  }
+
+  def createStorageReport(location: File): Try[String] = {
+    Try {
+      location.list
+        .toStream
+        .collect { case file if file.isDirectory => FileSystemDeposit(file, "").getStorageInformation.unsafeGetOrThrow }
+    }.flatMap(ReportGenerator.outputStorageReport)
+      .map(_ => "End of storage report.")
   }
 
   def createRawReport(location: File): Try[String] = {

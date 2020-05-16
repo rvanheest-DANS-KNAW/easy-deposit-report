@@ -33,6 +33,7 @@ class CommandLineOptions(args: Array[String], version: String) extends ScallopCo
        |  $printedName report full [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
        |  $printedName report summary [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
        |  $printedName report error [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
+       |  $printedName report storage [<location>]
        |  $printedName report raw [<location>]
        |  $printedName clean [-d, --data-only] [-s, --state <state>] [-k, --keep <n>] [-l, --new-state-label <state>] [-n, --new-state-description <description>] [-f, --force] [-o, --output] [--do-update] [<depositor>]
        |  $printedName sync-fedora-state <easy-dataset-id>
@@ -85,6 +86,17 @@ class CommandLineOptions(args: Array[String], version: String) extends ScallopCo
       footer(SUBCOMMAND_SEPARATOR)
     }
     addSubcommand(errorCmd)
+
+    val storageCmd = new Subcommand("storage") {
+      val location: ScallopOption[Path] = trailArg[Path](name = "location")
+
+      validatePathExists(location)
+      validatePathIsDirectory(location)
+
+      descr("creates a report containing the storage space of deposits")
+      footer(SUBCOMMAND_SEPARATOR)
+    }
+    addSubcommand(storageCmd)
 
     val rawCmd = new Subcommand("raw") {
       val location: ScallopOption[Path] = trailArg[Path](name = "location")

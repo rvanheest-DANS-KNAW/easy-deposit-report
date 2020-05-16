@@ -95,6 +95,22 @@ object ReportGenerator {
     }
   }
 
+  def outputStorageReport(deposits: Stream[StorageInformation])(implicit printStream: PrintStream): Try[Unit] = Try {
+    val csvFormat: CSVFormat = CSVFormat.RFC4180
+      .withHeader("DEPOSIT_ID", "NBR_OF_CONTINUED_DEPOSITS", "STORAGE_IN_BYTES")
+      .withDelimiter(',')
+      .withRecordSeparator('\n')
+
+    for (printer <- managed(csvFormat.print(printStream));
+         deposit <- deposits) {
+      printer.printRecord(
+        deposit.depositId,
+        deposit.numberOfContinuedDeposits.toString,
+        deposit.storageSpace.toString,
+      )
+    }
+  }
+
   def outputRawReport(table: Seq[Seq[String]])(implicit printStream: PrintStream): Try[Unit] = Try {
     table match {
       case Seq() =>

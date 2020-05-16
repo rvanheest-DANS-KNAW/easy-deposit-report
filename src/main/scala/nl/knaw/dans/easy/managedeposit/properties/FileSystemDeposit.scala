@@ -17,7 +17,7 @@ package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
 import nl.knaw.dans.easy.managedeposit.properties.FileSystemDeposit.depositPropertiesFileName
-import nl.knaw.dans.easy.managedeposit.{ Deposit, NotReadableException }
+import nl.knaw.dans.easy.managedeposit.{ Deposit, NotReadableException, StorageInformation }
 import nl.knaw.dans.lib.error._
 import nl.knaw.dans.lib.logging.DebugEnhancedLogging
 import org.apache.commons.io.FileUtils
@@ -57,6 +57,17 @@ trait FileSystemDeposit extends DebugEnhancedLogging {
       case child :: Nil => Option(child)
       case _ => Option.empty
     }
+  }
+
+  def getStorageInformation: Try[StorageInformation] = {
+    for {
+      continuedDeposits <- getNumberOfContinuedDeposits
+      storageSpace <- getDepositSize
+    } yield StorageInformation(
+      depositId = depositPath.name,
+      numberOfContinuedDeposits = continuedDeposits,
+      storageSpace = storageSpace,
+    )
   }
 
   def validateFilesInDepositDirectoryAreReadable(): Try[Unit] = {
@@ -103,4 +114,9 @@ trait FileSystemDeposit extends DebugEnhancedLogging {
 
 object FileSystemDeposit {
   val depositPropertiesFileName = "deposit.properties"
+
+  def apply(path: Deposit, loc: String): FileSystemDeposit = new FileSystemDeposit {
+    override val depositPath: Deposit = path
+    override val location: String = loc
+  }
 }
