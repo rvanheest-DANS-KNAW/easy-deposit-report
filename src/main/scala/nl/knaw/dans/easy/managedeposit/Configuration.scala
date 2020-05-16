@@ -20,11 +20,16 @@ import java.net.{ URI, URL }
 import better.files.File
 import better.files.File.root
 import com.yourmediashelf.fedora.client.FedoraCredentials
-import nl.knaw.dans.easy.managedeposit.properties.{ DepositPropertiesRepository, FileDepositPropertiesRepository }
-
-import scala.collection.JavaConverters._
+import nl.knaw.dans.easy.managedeposit.properties.DepositMode.DepositMode
+import nl.knaw.dans.easy.managedeposit.properties._
+import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import nl.knaw.dans.lib.string._
 import org.apache.commons.configuration.PropertiesConfiguration
+import org.json4s.ext.EnumNameSerializer
+import org.json4s.{ DefaultFormats, Formats }
+import scalaj.http.BaseHttp
+
+import scala.collection.JavaConverters._
 
 case class Configuration(version: String,
                          sword2DepositsDir: File,
@@ -33,10 +38,37 @@ case class Configuration(version: String,
                          fedoraCredentials: FedoraCredentials,
                          landingPageBaseUrl: URI,
                          dansDoiPrefixes: List[String],
+                         depositPropertiesServiceURL: URL,
+                         depositPropertiesServiceCredentials: Option[(String, String)],
+                         depositPropertiesServiceTimeout: Option[(Int, Int)],
+                         depositMode: DepositMode,
                         ) {
   def depositPropertiesFactory: DepositPropertiesRepository = {
     implicit val prefixes: List[String] = dansDoiPrefixes
-    new FileDepositPropertiesRepository(sword2DepositsDir, ingestFlowInbox, ingestFlowInboxArchived)
+    implicit val http: BaseHttp = HttpContext(version).Http
+    implicit val jsonFormats: Formats = new DefaultFormats {} + new EnumNameSerializer(State)
+
+    lazy val fileRepository = new FileDepositPropertiesRepository(
+      sword2DepositsDir,
+      ingestFlowInbox,
+      ingestFlowInboxArchived,
+    )
+    lazy val serviceRepository = new ServiceDepositPropertiesRepository(
+      client = new GraphQLClient(
+        url = depositPropertiesServiceURL,
+        timeout = depositPropertiesServiceTimeout,
+        credentials = depositPropertiesServiceCredentials,
+      ),
+      sword2DepositsDir = sword2DepositsDir,
+      ingestFlowInbox = ingestFlowInbox,
+      ingestFlowInboxArchived = ingestFlowInboxArchived
+    )
+
+    depositMode match {
+      case DepositMode.FILE => fileRepository
+      case DepositMode.SERVICE => serviceRepository
+      case DepositMode.BOTH => new CompoundDepositPropertiesRepository(fileRepository, serviceRepository)
+    }
   }
 }
 
@@ -65,6 +97,16 @@ object Configuration {
       ),
       landingPageBaseUrl = new URI(properties.getString("landing-pages.base-url")),
       dansDoiPrefixes = properties.getList("dans-doi.prefixes").asScala.toList.map(_.asInstanceOf[String]),
+      depositPropertiesServiceURL = new URL(properties.getString("easy-deposit-properties.url")),
+      depositPropertiesServiceCredentials = for {
+        username <- Option(properties.getString("easy-deposit-properties.username"))
+        password <- Option(properties.getString("easy-deposit-properties.password"))
+      } yield (username, password),
+      depositPropertiesServiceTimeout = for {
+        conn <- Option(properties.getInt("easy-deposit-properties.conn-timeout-ms"))
+        read <- Option(properties.getInt("easy-deposit-properties.read-timeout-ms"))
+      } yield (conn, read),
+      depositMode = DepositMode.withName(properties.getString("easy-deposit-properties.mode"))
     )
   }
 }
