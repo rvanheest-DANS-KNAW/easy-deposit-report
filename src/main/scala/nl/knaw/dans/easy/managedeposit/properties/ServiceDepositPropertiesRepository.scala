@@ -19,7 +19,7 @@ import better.files.File
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
-import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositPropertiesRepository.{ FindByDatasetId, GetSummaryReportData, ListDepositsToBeCleaned }
+import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositPropertiesRepository.{ FindByDatasetId, GetSummaryReportData, ListDepositsToBeCleaned, ListReportData }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.managedeposit.properties.graphql.direction.Forwards
 import nl.knaw.dans.lib.error._
@@ -34,7 +34,7 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
                                          sword2DepositsDir: File,
                                          ingestFlowInbox: File,
                                          ingestFlowInboxArchived: Option[File],
-                                        )(implicit formats: Formats) extends DepositPropertiesRepository {
+                                        )(implicit dansDoiPrefixes: List[String], formats: Formats) extends DepositPropertiesRepository {
 
   override def load(depositId: DepositId): Try[DepositProperties with FileSystemDeposit] = {
     // @formatter:off
@@ -87,7 +87,73 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
       .toTry
   }
 
-  override def listReportData(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[Stream[DepositInformation]] = ???
+  override def listReportData(depositor: Option[DepositorId],
+                              datamanager: Option[Datamanager],
+                              age: Option[Age],
+                             ): Try[Stream[DepositInformation]] = {
+    implicit val convertJson: Any => JValue = {
+      case s: String => JString(s)
+      case i: Int => JInt(i)
+      case v: JValue => v
+    }
+    val dmFilter = datamanager
+      .map(datamanager => Map("curator" -> ("userId" -> datamanager) ~ ("filter" -> "LATEST")))
+      .getOrElse(Map.empty)
+    val ageFilter = age
+      .map(age => Map[String, JValue]("laterThan" -> now.minusDays(age).toString(dateTimeFormatter)))
+      .getOrElse(Map.empty)
+    val variables: Map[String, JValue] = dmFilter ++ ageFilter + ("count" -> 100)
+
+    depositor
+      .map(depositorId => {
+        client.doPaginatedQuery[ListReportData.DataWithDepositor](
+          query = ListReportData.queryWithDepositor,
+          operationName = ListReportData.operationName,
+          variables = Map[String, JValue]("depositorId" -> depositorId) ++ variables,
+          direction = Forwards,
+        )(_.depositor.deposits.pageInfo)
+          .map(_.map(_.depositor.deposits))
+      })
+      .getOrElse {
+        client.doPaginatedQuery[ListReportData.DataWithoutDepositor](
+          query = ListReportData.queryWithoutDepositor,
+          operationName = ListReportData.operationName,
+          variables = variables,
+          direction = Forwards,
+        )(_.deposits.pageInfo)
+          .map(_.map(_.deposits))
+      }
+      .map(_.toStream.flatMap(_.edges.map(edge => toDepositInformation(edge.node))))
+  }
+
+  private def toDepositInformation(deposit: ListReportData.Deposit): DepositInformation = {
+    // @formatter:off
+    val location = (
+      (sword2DepositsDir -> "SWORD2") #::
+        (ingestFlowInbox -> "INGEST_FLOW") #::
+        ingestFlowInboxArchived.map(_ -> "INGEST_FLOW_ARCHIVED").toStream
+    )
+    // @formatter:on
+      .map { case (dir, location) => (dir / deposit.depositId) -> location }
+      .collectFirst { case (deposit, location) if deposit.exists => location }
+      .getOrElse("UNKNOWN")
+
+    DepositInformation(
+      depositId = deposit.depositId,
+      depositor = deposit.depositor.depositorId,
+      datamanager = deposit.curator.map(_.userId),
+      dansDoiRegistered = deposit.doiRegistered,
+      doiIdentifier = deposit.doi.map(_.value),
+      fedoraIdentifier = deposit.fedora.map(_.value),
+      state = deposit.state.map(_.label),
+      description = deposit.state.map(_.description),
+      creationTimestamp = deposit.creationTimestamp,
+      lastModified = deposit.lastModified,
+      origin = deposit.origin,
+      location = location,
+      bagDirName = deposit.bagName.getOrElse(notAvailable),
+    )
+  }
 
   private def now: DateTime = DateTime.now(DateTimeZone.UTC)
 
@@ -220,6 +286,104 @@ object ServiceDepositPropertiesRepository {
         |  }
         |  fedora_archived: deposits(state: {label: FEDORA_ARCHIVED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
         |    totalCount
+        |  }
+        |}""".stripMargin
+  }
+
+  object ListReportData {
+    case class DataWithDepositor(depositor: Depositor)
+    case class DataWithoutDepositor(deposits: Deposits)
+    case class Depositor(deposits: Deposits)
+    case class Deposits(pageInfo: Forwards, edges: Seq[Edge])
+    case class Edge(node: Deposit)
+    case class Deposit(depositId: DepositId,
+                       depositor: InnerDepositor,
+                       bagName: Option[String],
+                       origin: String,
+                       creationTimestamp: String,
+                       lastModified: String,
+                       state: Option[StateObj],
+                       doi: Option[Identifier],
+                       fedora: Option[Identifier],
+                       doiRegistered: Option[Boolean],
+                       curator: Option[Curator],
+                      )
+    case class InnerDepositor(depositorId: DepositorId)
+    case class StateObj(label: State, description: String)
+    case class Identifier(value: String)
+    case class Curator(userId: String)
+
+    val operationName = "ListReportData"
+    val queryWithDepositor: String =
+      """query ListReportData($depositorId: String!, $curator: DepositCuratorFilter, $laterThan: DateTime, $count: Int!, $after: String) {
+        |  depositor(id: $depositorId) {
+        |    deposits(curator: $curator, lastModifiedLaterThan: $laterThan, first: $count, after: $after) {
+        |      pageInfo {
+        |        hasNextPage
+        |        endCursor
+        |      }
+        |      edges {
+        |        node {
+        |          depositId
+        |          depositor {
+        |            depositorId
+        |          }
+        |          bagName
+        |          origin
+        |          creationTimestamp
+        |          lastModified
+        |          state {
+        |            label
+        |            description
+        |          }
+        |          doi: identifier(type: DOI) {
+        |            value
+        |          }
+        |          fedora: identifier(type: FEDORA) {
+        |            value
+        |          }
+        |          doiRegistered
+        |          curator {
+        |            userId
+        |          }
+        |        }
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    val queryWithoutDepositor: String =
+      """query ListReportData($curator: DepositCuratorFilter, $laterThan: DateTime, $count: Int!, $after: String) {
+        |  deposits(curator: $curator, lastModifiedLaterThan: $laterThan, first: $count, after: $after) {
+        |    pageInfo {
+        |      hasNextPage
+        |      endCursor
+        |    }
+        |    edges {
+        |      node {
+        |        depositId
+        |        depositor {
+        |          depositorId
+        |        }
+        |        bagName
+        |        origin
+        |        creationTimestamp
+        |        lastModified
+        |        state {
+        |          label
+        |          description
+        |        }
+        |        doi: identifier(type: DOI) {
+        |          value
+        |        }
+        |        fedora: identifier(type: FEDORA) {
+        |          value
+        |        }
+        |        doiRegistered
+        |        curator {
+        |          userId
+        |        }
+        |      }
+        |    }
         |  }
         |}""".stripMargin
   }

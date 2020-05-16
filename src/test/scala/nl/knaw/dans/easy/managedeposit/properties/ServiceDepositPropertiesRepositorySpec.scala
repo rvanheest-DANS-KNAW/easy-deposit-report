@@ -16,10 +16,10 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
-import nl.knaw.dans.easy.managedeposit.State
 import nl.knaw.dans.easy.managedeposit.fixture.{ FileSystemTestDataFixture, FixedDateTime, TestSupportFixture }
 import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
+import nl.knaw.dans.easy.managedeposit.{ DepositInformation, State }
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
 import org.json4s.JsonDSL._
@@ -29,7 +29,7 @@ import org.json4s.{ DefaultFormats, Formats }
 import org.scalatest.BeforeAndAfterAll
 import scalaj.http.{ BaseHttp, Http }
 
-import scala.util.Success
+import scala.util.{ Failure, Success }
 
 class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
   with BeforeAndAfterAll
@@ -48,6 +48,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
 
   implicit val http: BaseHttp = Http
   implicit val formats: Formats = DefaultFormats + new EnumNameSerializer(State)
+  implicit val dansDoiPrefixes: List[String] = List("10.17026/", "10.5072/")
   private val client = new GraphQLClient(baseUrl.url())
   private val repo = new ServiceDepositPropertiesRepository(client, sword2Inbox, ingestFlowInbox, Option(ingestFlowArchivedInbox))
 
@@ -340,8 +341,938 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
     }
   }
 
-  "listReportData" should "???" ignore { // TODO test after implementation
+  "listReportData" should "fetch all report data at once without depositor" in {
+    val response =
+      """{
+        |  "data": {
+        |    "deposits": {
+        |      "pageInfo": {
+        |        "hasNextPage": false,
+        |        "endCursor": "abcdef",
+        |      },
+        |      "edges": [
+        |        {
+        |          "node": {
+        |            "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |            "depositor": {
+        |              "depositorId": "user001"
+        |            },
+        |            "bagName": "bag1",
+        |            "origin": "API",
+        |            "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |            "lastModified": "2020-05-12T12:37:07.073Z",
+        |            "state": {
+        |              "label": "REJECTED",
+        |              "description": "ERRRRRR"
+        |            },
+        |            "doi": {
+        |              "value": "10.5072/dans-a1b-cde2"
+        |            },
+        |            "fedora": {
+        |              "value": "easy-dataset:1"
+        |            },
+        |            "doiRegistered": false,
+        |            "curator": {
+        |              "userId": "archie001"
+        |            }
+        |          }
+        |        },
+        |        {
+        |          "node": {
+        |            "depositId": "input-ruimtereis01",
+        |            "depositor": {
+        |              "depositorId": "user001"
+        |            },
+        |            "bagName": null,
+        |            "origin": "SMD",
+        |            "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |            "lastModified": "2020-05-12T12:37:07.073Z",
+        |            "state": null,
+        |            "doi": null,
+        |            "fedora": null,
+        |            "doiRegistered": null,
+        |            "curator": null
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
 
+    inside(repo.listReportData(Option.empty, Option.empty, Option.empty).map(_.toList)) {
+      case Success(prop1 :: prop2 :: Nil) =>
+        prop1 shouldBe DepositInformation(
+          depositId = "aba410b6-1a55-40b2-9ebe-6122aad00285",
+          depositor = "user001",
+          datamanager = Option("archie001"),
+          dansDoiRegistered = Option(false),
+          doiIdentifier = Option("10.5072/dans-a1b-cde2"),
+          fedoraIdentifier = Option("easy-dataset:1"),
+          state = Option(State.REJECTED),
+          description = Option("ERRRRRR"),
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "API",
+          location = "UNKNOWN",
+          bagDirName = "bag1",
+        )
+        prop2 shouldBe DepositInformation(
+          depositId = "input-ruimtereis01",
+          depositor = "user001",
+          datamanager = Option.empty,
+          dansDoiRegistered = Option.empty,
+          doiIdentifier = Option.empty,
+          fedoraIdentifier = Option.empty,
+          state = Option.empty,
+          description = Option.empty,
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "SMD",
+          location = "INGEST_FLOW_ARCHIVED",
+          bagDirName = "n/a",
+        )
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithoutDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> ("count" -> 100))
+    }
+  }
+
+  it should "fetch all report data paginated without depositor" in {
+    val response1 =
+      """{
+        |  "data": {
+        |    "deposits": {
+        |      "pageInfo": {
+        |        "hasNextPage": true,
+        |        "endCursor": "abcdef",
+        |      },
+        |      "edges": [
+        |        {
+        |          "node": {
+        |            "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |            "depositor": {
+        |              "depositorId": "user001"
+        |            },
+        |            "bagName": "bag1",
+        |            "origin": "API",
+        |            "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |            "lastModified": "2020-05-12T12:37:07.073Z",
+        |            "state": {
+        |              "label": "REJECTED",
+        |              "description": "ERRRRRR"
+        |            },
+        |            "doi": {
+        |              "value": "10.5072/dans-a1b-cde2"
+        |            },
+        |            "fedora": {
+        |              "value": "easy-dataset:1"
+        |            },
+        |            "doiRegistered": false,
+        |            "curator": {
+        |              "userId": "archie001"
+        |            }
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |}""".stripMargin
+    val response2 =
+      """{
+        |  "data": {
+        |    "deposits": {
+        |      "pageInfo": {
+        |        "hasNextPage": false,
+        |        "endCursor": "ghijkl",
+        |      },
+        |      "edges": [
+        |        {
+        |          "node": {
+        |            "depositId": "input-ruimtereis01",
+        |            "depositor": {
+        |              "depositorId": "user001"
+        |            },
+        |            "bagName": null,
+        |            "origin": "SMD",
+        |            "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |            "lastModified": "2020-05-12T12:37:07.073Z",
+        |            "state": null,
+        |            "doi": null,
+        |            "fedora": null,
+        |            "doiRegistered": null,
+        |            "curator": null
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response1))
+    server.enqueue(new MockResponse().setBody(response2))
+
+    inside(repo.listReportData(Option.empty, Option.empty, Option.empty).map(_.toList)) {
+      case Success(prop1 :: prop2 :: Nil) =>
+        prop1 shouldBe DepositInformation(
+          depositId = "aba410b6-1a55-40b2-9ebe-6122aad00285",
+          depositor = "user001",
+          datamanager = Option("archie001"),
+          dansDoiRegistered = Option(false),
+          doiIdentifier = Option("10.5072/dans-a1b-cde2"),
+          fedoraIdentifier = Option("easy-dataset:1"),
+          state = Option(State.REJECTED),
+          description = Option("ERRRRRR"),
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "API",
+          location = "UNKNOWN",
+          bagDirName = "bag1",
+        )
+        prop2 shouldBe DepositInformation(
+          depositId = "input-ruimtereis01",
+          depositor = "user001",
+          datamanager = Option.empty,
+          dansDoiRegistered = Option.empty,
+          doiIdentifier = Option.empty,
+          fedoraIdentifier = Option.empty,
+          state = Option.empty,
+          description = Option.empty,
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "SMD",
+          location = "INGEST_FLOW_ARCHIVED",
+          bagDirName = "n/a",
+        )
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithoutDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> ("count" -> 100))
+    }
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithoutDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("count" -> 100) ~
+            ("after" -> "abcdef")
+        })
+    }
+  }
+
+  it should "fetch only those records that apply to the given filters at once without depositor" in {
+    val response =
+      """{
+        |  "data": {
+        |    "deposits": {
+        |      "pageInfo": {
+        |        "hasNextPage": false,
+        |        "endCursor": "abcdef",
+        |      },
+        |      "edges": [
+        |        {
+        |          "node": {
+        |            "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |            "depositor": {
+        |              "depositorId": "user001"
+        |            },
+        |            "bagName": "bag1",
+        |            "origin": "API",
+        |            "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |            "lastModified": "2020-05-12T12:37:07.073Z",
+        |            "state": {
+        |              "label": "REJECTED",
+        |              "description": "ERRRRRR"
+        |            },
+        |            "doi": {
+        |              "value": "10.5072/dans-a1b-cde2"
+        |            },
+        |            "fedora": {
+        |              "value": "easy-dataset:1"
+        |            },
+        |            "doiRegistered": false,
+        |            "curator": {
+        |              "userId": "archie001"
+        |            }
+        |          }
+        |        },
+        |        {
+        |          "node": {
+        |            "depositId": "input-ruimtereis01",
+        |            "depositor": {
+        |              "depositorId": "user001"
+        |            },
+        |            "bagName": null,
+        |            "origin": "SMD",
+        |            "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |            "lastModified": "2020-05-12T12:37:07.073Z",
+        |            "state": null,
+        |            "doi": null,
+        |            "fedora": null,
+        |            "doiRegistered": null,
+        |            "curator": null
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
+
+    inside(repo.listReportData(Option.empty, Option("archie001"), Option(0)).map(_.toList)) {
+      case Failure(exception) => fail(exception)
+      case Success(prop1 :: prop2 :: Nil) =>
+        prop1 shouldBe DepositInformation(
+          depositId = "aba410b6-1a55-40b2-9ebe-6122aad00285",
+          depositor = "user001",
+          datamanager = Option("archie001"),
+          dansDoiRegistered = Option(false),
+          doiIdentifier = Option("10.5072/dans-a1b-cde2"),
+          fedoraIdentifier = Option("easy-dataset:1"),
+          state = Option(State.REJECTED),
+          description = Option("ERRRRRR"),
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "API",
+          location = "UNKNOWN",
+          bagDirName = "bag1",
+        )
+        prop2 shouldBe DepositInformation(
+          depositId = "input-ruimtereis01",
+          depositor = "user001",
+          datamanager = Option.empty,
+          dansDoiRegistered = Option.empty,
+          doiIdentifier = Option.empty,
+          fedoraIdentifier = Option.empty,
+          state = Option.empty,
+          description = Option.empty,
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "SMD",
+          location = "INGEST_FLOW_ARCHIVED",
+          bagDirName = "n/a",
+        )
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithoutDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("curator" -> ("userId" -> "archie001") ~ ("filter" -> "LATEST")) ~
+            ("laterThan" -> "2018-03-22T20:43:01.000Z") ~
+            ("count" -> 100)
+        })
+    }
+  }
+
+  it should "fetch only those records that apply to the given filters paginated without depositor" in {
+    val response1 =
+      """{
+        |  "data": {
+        |    "deposits": {
+        |      "pageInfo": {
+        |        "hasNextPage": true,
+        |        "endCursor": "abcdef",
+        |      },
+        |      "edges": [
+        |        {
+        |          "node": {
+        |            "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |            "depositor": {
+        |              "depositorId": "user001"
+        |            },
+        |            "bagName": "bag1",
+        |            "origin": "API",
+        |            "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |            "lastModified": "2020-05-12T12:37:07.073Z",
+        |            "state": {
+        |              "label": "REJECTED",
+        |              "description": "ERRRRRR"
+        |            },
+        |            "doi": {
+        |              "value": "10.5072/dans-a1b-cde2"
+        |            },
+        |            "fedora": {
+        |              "value": "easy-dataset:1"
+        |            },
+        |            "doiRegistered": false,
+        |            "curator": {
+        |              "userId": "archie001"
+        |            }
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |}""".stripMargin
+    val response2 =
+      """{
+        |  "data": {
+        |    "deposits": {
+        |      "pageInfo": {
+        |        "hasNextPage": false,
+        |        "endCursor": "ghijkl",
+        |      },
+        |      "edges": [
+        |        {
+        |          "node": {
+        |            "depositId": "input-ruimtereis01",
+        |            "depositor": {
+        |              "depositorId": "user001"
+        |            },
+        |            "bagName": null,
+        |            "origin": "SMD",
+        |            "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |            "lastModified": "2020-05-12T12:37:07.073Z",
+        |            "state": null,
+        |            "doi": null,
+        |            "fedora": null,
+        |            "doiRegistered": null,
+        |            "curator": null
+        |          }
+        |        }
+        |      ]
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response1))
+    server.enqueue(new MockResponse().setBody(response2))
+
+    inside(repo.listReportData(Option.empty, Option("archie001"), Option(0)).map(_.toList)) {
+      case Failure(exception) => fail(exception)
+      case Success(prop1 :: prop2 :: Nil) =>
+        prop1 shouldBe DepositInformation(
+          depositId = "aba410b6-1a55-40b2-9ebe-6122aad00285",
+          depositor = "user001",
+          datamanager = Option("archie001"),
+          dansDoiRegistered = Option(false),
+          doiIdentifier = Option("10.5072/dans-a1b-cde2"),
+          fedoraIdentifier = Option("easy-dataset:1"),
+          state = Option(State.REJECTED),
+          description = Option("ERRRRRR"),
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "API",
+          location = "UNKNOWN",
+          bagDirName = "bag1",
+        )
+        prop2 shouldBe DepositInformation(
+          depositId = "input-ruimtereis01",
+          depositor = "user001",
+          datamanager = Option.empty,
+          dansDoiRegistered = Option.empty,
+          doiIdentifier = Option.empty,
+          fedoraIdentifier = Option.empty,
+          state = Option.empty,
+          description = Option.empty,
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "SMD",
+          location = "INGEST_FLOW_ARCHIVED",
+          bagDirName = "n/a",
+        )
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithoutDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("curator" -> ("userId" -> "archie001") ~ ("filter" -> "LATEST")) ~
+            ("laterThan" -> "2018-03-22T20:43:01.000Z") ~
+            ("count" -> 100)
+        })
+    }
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithoutDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("curator" -> ("userId" -> "archie001") ~ ("filter" -> "LATEST")) ~
+            ("laterThan" -> "2018-03-22T20:43:01.000Z") ~
+            ("count" -> 100) ~
+            ("after" -> "abcdef")
+        })
+    }
+  }
+
+  it should "fetch all report data at once with depositor" in {
+    val response =
+      """{
+        |  "data": {
+        |    "depositor": {
+        |      "deposits": {
+        |        "pageInfo": {
+        |          "hasNextPage": false,
+        |          "endCursor": "abcdef",
+        |        },
+        |        "edges": [
+        |          {
+        |            "node": {
+        |              "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |              "depositor": {
+        |                "depositorId": "user001"
+        |              },
+        |              "bagName": "bag1",
+        |              "origin": "API",
+        |              "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |              "lastModified": "2020-05-12T12:37:07.073Z",
+        |              "state": {
+        |                "label": "REJECTED",
+        |                "description": "ERRRRRR"
+        |              },
+        |              "doi": {
+        |                "value": "10.5072/dans-a1b-cde2"
+        |              },
+        |              "fedora": {
+        |                "value": "easy-dataset:1"
+        |              },
+        |              "doiRegistered": false,
+        |              "curator": {
+        |                "userId": "archie001"
+        |              }
+        |            }
+        |          },
+        |          {
+        |            "node": {
+        |              "depositId": "input-ruimtereis01",
+        |              "depositor": {
+        |                "depositorId": "user001"
+        |              },
+        |              "bagName": null,
+        |              "origin": "SMD",
+        |              "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |              "lastModified": "2020-05-12T12:37:07.073Z",
+        |              "state": null,
+        |              "doi": null,
+        |              "fedora": null,
+        |              "doiRegistered": null,
+        |              "curator": null
+        |            }
+        |          }
+        |        ]
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
+
+    inside(repo.listReportData(Option("user001"), Option.empty, Option.empty).map(_.toList)) {
+      case Success(prop1 :: prop2 :: Nil) =>
+        prop1 shouldBe DepositInformation(
+          depositId = "aba410b6-1a55-40b2-9ebe-6122aad00285",
+          depositor = "user001",
+          datamanager = Option("archie001"),
+          dansDoiRegistered = Option(false),
+          doiIdentifier = Option("10.5072/dans-a1b-cde2"),
+          fedoraIdentifier = Option("easy-dataset:1"),
+          state = Option(State.REJECTED),
+          description = Option("ERRRRRR"),
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "API",
+          location = "UNKNOWN",
+          bagDirName = "bag1",
+        )
+        prop2 shouldBe DepositInformation(
+          depositId = "input-ruimtereis01",
+          depositor = "user001",
+          datamanager = Option.empty,
+          dansDoiRegistered = Option.empty,
+          doiIdentifier = Option.empty,
+          fedoraIdentifier = Option.empty,
+          state = Option.empty,
+          description = Option.empty,
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "SMD",
+          location = "INGEST_FLOW_ARCHIVED",
+          bagDirName = "n/a",
+        )
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("depositorId" -> "user001") ~
+            ("count" -> 100)
+        })
+    }
+  }
+
+  it should "fetch all report data paginated with depositor" in {
+    val response1 =
+      """{
+        |  "data": {
+        |    "depositor": {
+        |      "deposits": {
+        |        "pageInfo": {
+        |          "hasNextPage": true,
+        |          "endCursor": "abcdef",
+        |        },
+        |        "edges": [
+        |          {
+        |            "node": {
+        |              "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |              "depositor": {
+        |                "depositorId": "user001"
+        |              },
+        |              "bagName": "bag1",
+        |              "origin": "API",
+        |              "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |              "lastModified": "2020-05-12T12:37:07.073Z",
+        |              "state": {
+        |                "label": "REJECTED",
+        |                "description": "ERRRRRR"
+        |              },
+        |              "doi": {
+        |                "value": "10.5072/dans-a1b-cde2"
+        |              },
+        |              "fedora": {
+        |                "value": "easy-dataset:1"
+        |              },
+        |              "doiRegistered": false,
+        |              "curator": {
+        |                "userId": "archie001"
+        |              }
+        |            }
+        |          }
+        |        ]
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    val response2 =
+      """{
+        |  "data": {
+        |    "depositor": {
+        |      "deposits": {
+        |        "pageInfo": {
+        |          "hasNextPage": false,
+        |          "endCursor": "ghijkl",
+        |        },
+        |        "edges": [
+        |          {
+        |            "node": {
+        |              "depositId": "input-ruimtereis01",
+        |              "depositor": {
+        |                "depositorId": "user001"
+        |              },
+        |              "bagName": null,
+        |              "origin": "SMD",
+        |              "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |              "lastModified": "2020-05-12T12:37:07.073Z",
+        |              "state": null,
+        |              "doi": null,
+        |              "fedora": null,
+        |              "doiRegistered": null,
+        |              "curator": null
+        |            }
+        |          }
+        |        ]
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response1))
+    server.enqueue(new MockResponse().setBody(response2))
+
+    inside(repo.listReportData(Option("user001"), Option.empty, Option.empty).map(_.toList)) {
+      case Success(prop1 :: prop2 :: Nil) =>
+        prop1 shouldBe DepositInformation(
+          depositId = "aba410b6-1a55-40b2-9ebe-6122aad00285",
+          depositor = "user001",
+          datamanager = Option("archie001"),
+          dansDoiRegistered = Option(false),
+          doiIdentifier = Option("10.5072/dans-a1b-cde2"),
+          fedoraIdentifier = Option("easy-dataset:1"),
+          state = Option(State.REJECTED),
+          description = Option("ERRRRRR"),
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "API",
+          location = "UNKNOWN",
+          bagDirName = "bag1",
+        )
+        prop2 shouldBe DepositInformation(
+          depositId = "input-ruimtereis01",
+          depositor = "user001",
+          datamanager = Option.empty,
+          dansDoiRegistered = Option.empty,
+          doiIdentifier = Option.empty,
+          fedoraIdentifier = Option.empty,
+          state = Option.empty,
+          description = Option.empty,
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "SMD",
+          location = "INGEST_FLOW_ARCHIVED",
+          bagDirName = "n/a",
+        )
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("depositorId" -> "user001") ~
+            ("count" -> 100)
+        })
+    }
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("depositorId" -> "user001") ~
+            ("count" -> 100) ~
+            ("after" -> "abcdef")
+        })
+    }
+  }
+
+  it should "fetch only those records that apply to the given filters at once with depositor" in {
+    val response =
+      """{
+        |  "data": {
+        |    "depositor": {
+        |      "deposits": {
+        |        "pageInfo": {
+        |          "hasNextPage": false,
+        |          "endCursor": "abcdef",
+        |        },
+        |        "edges": [
+        |          {
+        |            "node": {
+        |              "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |              "depositor": {
+        |                "depositorId": "user001"
+        |              },
+        |              "bagName": "bag1",
+        |              "origin": "API",
+        |              "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |              "lastModified": "2020-05-12T12:37:07.073Z",
+        |              "state": {
+        |                "label": "REJECTED",
+        |                "description": "ERRRRRR"
+        |              },
+        |              "doi": {
+        |                "value": "10.5072/dans-a1b-cde2"
+        |              },
+        |              "fedora": {
+        |                "value": "easy-dataset:1"
+        |              },
+        |              "doiRegistered": false,
+        |              "curator": {
+        |                "userId": "archie001"
+        |              }
+        |            }
+        |          },
+        |          {
+        |            "node": {
+        |              "depositId": "input-ruimtereis01",
+        |              "depositor": {
+        |                "depositorId": "user001"
+        |              },
+        |              "bagName": null,
+        |              "origin": "SMD",
+        |              "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |              "lastModified": "2020-05-12T12:37:07.073Z",
+        |              "state": null,
+        |              "doi": null,
+        |              "fedora": null,
+        |              "doiRegistered": null,
+        |              "curator": null
+        |            }
+        |          }
+        |        ]
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
+
+    inside(repo.listReportData(Option("user001"), Option("archie001"), Option(0)).map(_.toList)) {
+      case Failure(exception) => fail(exception)
+      case Success(prop1 :: prop2 :: Nil) =>
+        prop1 shouldBe DepositInformation(
+          depositId = "aba410b6-1a55-40b2-9ebe-6122aad00285",
+          depositor = "user001",
+          datamanager = Option("archie001"),
+          dansDoiRegistered = Option(false),
+          doiIdentifier = Option("10.5072/dans-a1b-cde2"),
+          fedoraIdentifier = Option("easy-dataset:1"),
+          state = Option(State.REJECTED),
+          description = Option("ERRRRRR"),
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "API",
+          location = "UNKNOWN",
+          bagDirName = "bag1",
+        )
+        prop2 shouldBe DepositInformation(
+          depositId = "input-ruimtereis01",
+          depositor = "user001",
+          datamanager = Option.empty,
+          dansDoiRegistered = Option.empty,
+          doiIdentifier = Option.empty,
+          fedoraIdentifier = Option.empty,
+          state = Option.empty,
+          description = Option.empty,
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "SMD",
+          location = "INGEST_FLOW_ARCHIVED",
+          bagDirName = "n/a",
+        )
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("depositorId" -> "user001") ~
+            ("curator" -> ("userId" -> "archie001") ~ ("filter" -> "LATEST")) ~
+            ("laterThan" -> "2018-03-22T20:43:01.000Z") ~
+            ("count" -> 100)
+        })
+    }
+  }
+
+  it should "fetch only those records that apply to the given filters paginated with depositor" in {
+    val response1 =
+      """{
+        |  "data": {
+        |    "depositor": {
+        |      "deposits": {
+        |        "pageInfo": {
+        |          "hasNextPage": true,
+        |          "endCursor": "abcdef",
+        |        },
+        |        "edges": [
+        |          {
+        |            "node": {
+        |              "depositId": "aba410b6-1a55-40b2-9ebe-6122aad00285",
+        |              "depositor": {
+        |                "depositorId": "user001"
+        |              },
+        |              "bagName": "bag1",
+        |              "origin": "API",
+        |              "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |              "lastModified": "2020-05-12T12:37:07.073Z",
+        |              "state": {
+        |                "label": "REJECTED",
+        |                "description": "ERRRRRR"
+        |              },
+        |              "doi": {
+        |                "value": "10.5072/dans-a1b-cde2"
+        |              },
+        |              "fedora": {
+        |                "value": "easy-dataset:1"
+        |              },
+        |              "doiRegistered": false,
+        |              "curator": {
+        |                "userId": "archie001"
+        |              }
+        |            }
+        |          }
+        |        ]
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    val response2 =
+      """{
+        |  "data": {
+        |    "depositor": {
+        |      "deposits": {
+        |        "pageInfo": {
+        |          "hasNextPage": false,
+        |          "endCursor": "ghijkl",
+        |        },
+        |        "edges": [
+        |          {
+        |            "node": {
+        |              "depositId": "input-ruimtereis01",
+        |              "depositor": {
+        |                "depositorId": "user001"
+        |              },
+        |              "bagName": null,
+        |              "origin": "SMD",
+        |              "creationTimestamp": "2018-12-31T23:00:00.000Z",
+        |              "lastModified": "2020-05-12T12:37:07.073Z",
+        |              "state": null,
+        |              "doi": null,
+        |              "fedora": null,
+        |              "doiRegistered": null,
+        |              "curator": null
+        |            }
+        |          }
+        |        ]
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response1))
+    server.enqueue(new MockResponse().setBody(response2))
+
+    inside(repo.listReportData(Option("user001"), Option("archie001"), Option(0)).map(_.toList)) {
+      case Failure(exception) => fail(exception)
+      case Success(prop1 :: prop2 :: Nil) =>
+        prop1 shouldBe DepositInformation(
+          depositId = "aba410b6-1a55-40b2-9ebe-6122aad00285",
+          depositor = "user001",
+          datamanager = Option("archie001"),
+          dansDoiRegistered = Option(false),
+          doiIdentifier = Option("10.5072/dans-a1b-cde2"),
+          fedoraIdentifier = Option("easy-dataset:1"),
+          state = Option(State.REJECTED),
+          description = Option("ERRRRRR"),
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "API",
+          location = "UNKNOWN",
+          bagDirName = "bag1",
+        )
+        prop2 shouldBe DepositInformation(
+          depositId = "input-ruimtereis01",
+          depositor = "user001",
+          datamanager = Option.empty,
+          dansDoiRegistered = Option.empty,
+          doiIdentifier = Option.empty,
+          fedoraIdentifier = Option.empty,
+          state = Option.empty,
+          description = Option.empty,
+          creationTimestamp = "2018-12-31T23:00:00.000Z",
+          lastModified = "2020-05-12T12:37:07.073Z",
+          origin = "SMD",
+          location = "INGEST_FLOW_ARCHIVED",
+          bagDirName = "n/a",
+        )
+    }
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("depositorId" -> "user001") ~
+            ("curator" -> ("userId" -> "archie001") ~ ("filter" -> "LATEST")) ~
+            ("laterThan" -> "2018-03-22T20:43:01.000Z") ~
+            ("count" -> 100)
+        })
+    }
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.ListReportData.queryWithDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.ListReportData.operationName) ~
+        ("variables" -> {
+          ("count" -> 100) ~
+            ("depositorId" -> "user001") ~
+            ("laterThan" -> "2018-03-22T20:43:01.000Z") ~
+            ("after" -> "abcdef") ~
+            ("curator" -> ("userId" -> "archie001") ~ ("filter" -> "LATEST"))
+        })
+    }
   }
 
   "getCurationParametersByDatasetId" should "retrieve the curation parameters if the deposit exists" in {
