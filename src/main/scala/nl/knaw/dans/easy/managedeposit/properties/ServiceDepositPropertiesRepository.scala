@@ -45,8 +45,16 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
     )
     // @formatter:on
       .map { case (dir, location) => (dir / depositId) -> location }
-      .collectFirst { case (deposit, location) if deposit.exists => Success(new ServiceDepositProperties(depositId, deposit, location, client)) }
+      .collectFirst { case (deposit, location) if deposit.exists => Success(from(depositId, deposit, location)) }
       .getOrElse(Failure(DepositDoesNotExist(depositId)))
+  }
+
+  private def from(depositId: DepositId, deposit: Deposit, location: String) = {
+    val loc = location
+    new ServiceDepositProperties(depositId, loc, client) with FileSystemDeposit {
+      override val depositPath: Deposit = deposit
+      override val location: String = loc
+    }
   }
 
   override def getSummaryReportData(depositor: Option[DepositorId],

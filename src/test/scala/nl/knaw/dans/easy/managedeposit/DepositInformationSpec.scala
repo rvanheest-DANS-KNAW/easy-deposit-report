@@ -35,8 +35,6 @@ class DepositInformationSpec extends AnyFlatSpec with Matchers with OptionValues
     description = Some("description"), 
     creationTimestamp = "2000-01-01", 
     lastModified = "2000-01-02", 
-    numberOfContinuedDeposits = 2, 
-    storageSpace = 1234L, 
     origin = "ORIGIN-1", 
     location = "LOCATION-1", 
     bagDirName = "baggy",

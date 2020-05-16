@@ -175,8 +175,6 @@ class FileDepositProperties(override val depositPath: Deposit,
       stateDescription <- getStateDescription
       creationTimestamp <- getCreationTime
       lastModified <- getLastModifiedTimestamp
-      continuedDeposits <- getNumberOfContinuedDeposits
-      storageSpace <- getDepositSize
       depositOrigin <- getDepositOrigin
       bagDirName <- getBagDirName
     } yield DepositInformation(
@@ -190,8 +188,6 @@ class FileDepositProperties(override val depositPath: Deposit,
       description = stateDescription.map(StringUtils.abbreviate(_, 1000)),
       creationTimestamp = creationTimestamp.fold(notAvailable)(_.toString(dateTimeFormatter)),
       lastModified = lastModified.fold(notAvailable)(_.toString(dateTimeFormatter)),
-      numberOfContinuedDeposits = continuedDeposits,
-      storageSpace = storageSpace,
       origin = depositOrigin.getOrElse(notAvailable),
       location = location,
       bagDirName = bagDirName.getOrElse(notAvailable),

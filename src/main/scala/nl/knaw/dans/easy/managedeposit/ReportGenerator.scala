@@ -56,23 +56,22 @@ object ReportGenerator {
 
   def outputErrorReport(deposits: Stream[DepositInformation])(implicit printStream: PrintStream): Try[Unit] = {
     printRecords(deposits.filter {
-      case DepositInformation(_, _, _, _, _, _, Some(INVALID), Some("abandoned draft, data removed"), _, _, _, _, _, _, _) => false // see `clean-deposits.sh` (clean DRAFT section)
-      case DepositInformation(_, _, _, _, _, _, Some(INVALID), _, _, _, _, _, _, _, _) => true
-      case DepositInformation(_, _, _, _, _, _, Some(FAILED), _, _, _, _, _, _, _, _) => true
-      case DepositInformation(_, _, _, _, _, _, Some(REJECTED), Some(`requestChangesDescription`), _, _, _, _, "API", _, _) => false
-      case DepositInformation(_, _, _, _, _, _, Some(REJECTED), _, _, _, _, _, _, _, _) => true
-      case DepositInformation(_, _, _, _, _, _, Some(UNKNOWN), _, _, _, _, _, _, _, _) => true
-      case DepositInformation(_, _, _, _, _, _, None, _, _, _, _, _, _, _, _) => true
+      case DepositInformation(_, _, _, _, _, _, Some(INVALID), Some("abandoned draft, data removed"), _, _, _, _, _) => false // see `clean-deposits.sh` (clean DRAFT section)
+      case DepositInformation(_, _, _, _, _, _, Some(INVALID), _, _, _, _, _, _) => true
+      case DepositInformation(_, _, _, _, _, _, Some(FAILED), _, _, _, _, _, _) => true
+      case DepositInformation(_, _, _, _, _, _, Some(REJECTED), Some(`requestChangesDescription`), _, _, "API", _, _) => false
+      case DepositInformation(_, _, _, _, _, _, Some(REJECTED), _, _, _, _, _, _) => true
+      case DepositInformation(_, _, _, _, _, _, Some(UNKNOWN), _, _, _, _, _, _) => true
+      case DepositInformation(_, _, _, _, _, _, None, _, _, _, _, _, _) => true
       // When the doi of an archived deposit is NOT registered, an error should be raised
-      case d @ DepositInformation(_, _, _, Some(false), _, _, Some(ARCHIVED), _, _, _, _, _, _, _, _) if d.isDansDoi => true
+      case d @ DepositInformation(_, _, _, Some(false), _, _, Some(ARCHIVED), _, _, _, _, _, _) if d.isDansDoi => true
       case _ => false
     })
   }
 
   private def printRecords(deposits: Stream[DepositInformation])(implicit printStream: PrintStream): Try[Unit] = Try {
     val csvFormat: CSVFormat = CSVFormat.RFC4180
-      .withHeader("DEPOSITOR", "DEPOSIT_ID", "BAG_NAME", "DEPOSIT_STATE", "ORIGIN", "LOCATION", "DOI", "DOI_REGISTERED", "FEDORA_ID", "DATAMANAGER", "DEPOSIT_CREATION_TIMESTAMP",
-        "DEPOSIT_UPDATE_TIMESTAMP", "DESCRIPTION", "NBR_OF_CONTINUED_DEPOSITS", "STORAGE_IN_BYTES")
+      .withHeader("DEPOSITOR", "DEPOSIT_ID", "BAG_NAME", "DEPOSIT_STATE", "ORIGIN", "LOCATION", "DOI", "DOI_REGISTERED", "FEDORA_ID", "DATAMANAGER", "DEPOSIT_CREATION_TIMESTAMP", "DEPOSIT_UPDATE_TIMESTAMP", "DESCRIPTION")
       .withDelimiter(',')
       .withRecordSeparator('\n')
 
@@ -92,8 +91,6 @@ object ReportGenerator {
         deposit.creationTimestamp,
         deposit.lastModified,
         deposit.description.getOrElse(notAvailable),
-        deposit.numberOfContinuedDeposits.toString,
-        deposit.storageSpace.toString,
       )
     }
   }
@@ -124,8 +121,7 @@ object ReportGenerator {
 
   def outputDeletedDeposits(deposits: Stream[DepositInformation])(implicit printStream: PrintStream): Unit = {
     val csvFormat: CSVFormat = CSVFormat.RFC4180
-      .withHeader("DEPOSITOR", "DEPOSIT_ID", "BAG_NAME", "DEPOSIT_STATE", "ORIGIN", "LOCATION", "DOI", "DOI_REGISTERED", "FEDORA_ID", "DATAMANAGER", "DEPOSIT_CREATION_TIMESTAMP",
-        "DEPOSIT_UPDATE_TIMESTAMP", "DESCRIPTION")
+      .withHeader("DEPOSITOR", "DEPOSIT_ID", "BAG_NAME", "DEPOSIT_STATE", "ORIGIN", "LOCATION", "DOI", "DOI_REGISTERED", "FEDORA_ID", "DATAMANAGER", "DEPOSIT_CREATION_TIMESTAMP", "DEPOSIT_UPDATE_TIMESTAMP", "DESCRIPTION")
       .withDelimiter(',')
       .withRecordSeparator('\n')
 

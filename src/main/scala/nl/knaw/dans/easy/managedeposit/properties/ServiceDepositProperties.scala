@@ -29,10 +29,9 @@ import org.json4s.{ Formats, JValue }
 import scala.util.{ Failure, Try }
 
 class ServiceDepositProperties(depositId: DepositId,
-                               override val depositPath: Deposit,
-                               override val location: String,
+                               location: String,
                                client: GraphQLClient,
-                              )(implicit formats: Formats) extends DepositProperties with FileSystemDeposit with DebugEnhancedLogging {
+                              )(implicit formats: Formats) extends DepositProperties with DebugEnhancedLogging {
 
   private def format(json: JValue): String = JsonMethods.compact(JsonMethods.render(json))
 
@@ -61,8 +60,6 @@ class ServiceDepositProperties(depositId: DepositId,
     for {
       json <- client.doQuery(GetDepositInformation.query, GetDepositInformation.operationName, Map("depositId" -> depositId)).toTry
       deposit = json.extract[GetDepositInformation.Data].deposit
-      numberOfContinuedDeposits <- getNumberOfContinuedDeposits
-      depositSize <- getDepositSize
       depositInfo <- deposit
         .map(deposit => Try {
           DepositInformation(
@@ -76,8 +73,6 @@ class ServiceDepositProperties(depositId: DepositId,
             description = deposit.state.map(_.description),
             creationTimestamp = deposit.creationTimestamp,
             lastModified = deposit.lastModified,
-            numberOfContinuedDeposits = numberOfContinuedDeposits,
-            storageSpace = depositSize,
             origin = deposit.origin,
             location = location,
             bagDirName = deposit.bagName.getOrElse(notAvailable),

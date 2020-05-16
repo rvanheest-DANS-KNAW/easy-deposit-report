@@ -44,7 +44,7 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture
   private val client = new GraphQLClient(baseUrl.url())
   private val depositId = depositOne.name
   private implicit val dansDoiPrefixes: List[String] = List("10.17026/", "10.5072/")
-  private val properties = new ServiceDepositProperties(depositId, depositOne, "SWORD2", client)
+  private val properties = new ServiceDepositProperties(depositId, "SWORD2", client)
 
   override protected def afterAll(): Unit = {
     server.shutdown()
@@ -125,8 +125,6 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture
       description = Some("ERRRRRR"),
       creationTimestamp = "2018-12-31T23:00:00.000Z",
       lastModified = "2020-05-12T12:37:07.073Z",
-      numberOfContinuedDeposits = 2,
-      storageSpace = 555L,
       origin = "API",
       location = "SWORD2",
       bagDirName = "bag1",

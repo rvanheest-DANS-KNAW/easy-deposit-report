@@ -264,9 +264,7 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
       s"${ deposit.datamanager.getOrElse("n/a") }," +
       s"${ deposit.creationTimestamp }," +
       s"${ deposit.lastModified }," +
-      s"${ deposit.description.getOrElse("n/a") }," +
-      s"${ deposit.numberOfContinuedDeposits }," +
-      s"${ deposit.storageSpace }"
+      s"${ deposit.description.getOrElse("n/a") }"
   }
 
   private def createDeposit(depositorId: String, state: State, location: String): DepositInformation = {
@@ -281,8 +279,6 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
       description = Some("description"),
       creationTimestamp = DateTime.now().minusDays(3).toString(),
       lastModified = "",
-      numberOfContinuedDeposits = 2,
-      storageSpace = 129000,
       origin = "SWORD2",
       location = location,
       bagDirName = "baggy",

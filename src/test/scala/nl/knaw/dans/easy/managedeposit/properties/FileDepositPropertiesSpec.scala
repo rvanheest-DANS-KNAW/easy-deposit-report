@@ -164,8 +164,6 @@ class FileDepositPropertiesSpec extends TestSupportFixture
       Some("Deposit is valid and ready for post-submission processing"),
       _,
       _,
-      2,
-      555L,
       "SWORD2",
       "INGEST_FLOW",
       "baggy",
