@@ -5,7 +5,7 @@ easy-manage-deposit
 
 SYNOPSIS
 --------
-   
+
     easy-manage-deposit report full [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
     easy-manage-deposit report summary [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
     easy-manage-deposit report error [-a, --age <n>] [-m, --datamanager <datamanager>] [<depositor>]
@@ -13,7 +13,7 @@ SYNOPSIS
     easy-manage-deposit clean [-d, --data-only] [-s, --state <state>] [-k, --keep <n>] [-l, --new-state-label <state>] [-n, --new-state-description <description>] [-f, --force] [-o, --output] [--do-update] [<depositor>]
     easy-manage-deposit sync-fedora-state <easy-dataset-id>
 
-      
+
 ARGUMENTS
 --------
    
@@ -108,7 +108,7 @@ DESCRIPTION
 -----------
 
 Manages the deposits in the deposit area.
-     
+
 EXAMPLES
 --------
 
