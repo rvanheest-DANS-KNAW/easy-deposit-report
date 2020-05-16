@@ -18,6 +18,7 @@ package nl.knaw.dans.easy.managedeposit.properties
 import better.files.File
 import nl.knaw.dans.easy.managedeposit.State
 import nl.knaw.dans.easy.managedeposit.fixture.{ FileSystemTestDataFixture, FixedDateTime, TestSupportFixture }
+import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
@@ -69,8 +70,274 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
     super.afterAll()
   }
 
-  "getSummaryReportData" should "???" ignore { // TODO test after implementation
+  "getSummaryReportData" should "retrieve the counts necessary for a summary report (without depositor)" in {
+    val response =
+      """{
+        |  "data": {
+        |    "total": {
+        |      "totalCount": 55
+        |    },
+        |    "draft": {
+        |      "totalCount": 1
+        |    },
+        |    "uploaded": {
+        |      "totalCount": 2
+        |    },
+        |    "finalizing": {
+        |      "totalCount": 3
+        |    },
+        |    "invalid": {
+        |      "totalCount": 4
+        |    },
+        |    "submitted": {
+        |      "totalCount": 5
+        |    },
+        |    "rejected": {
+        |      "totalCount": 6
+        |    },
+        |    "failed": {
+        |      "totalCount": 7
+        |    },
+        |    "in_review": {
+        |      "totalCount": 8
+        |    },
+        |    "archived": {
+        |      "totalCount": 9
+        |    },
+        |    "fedora_archived": {
+        |      "totalCount": 10
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
 
+    repo.getSummaryReportData(Option.empty, Option.empty, Option.empty).success.value shouldBe SummaryReportData(
+      total = 55,
+      totalPerState = Map(
+        State.DRAFT -> 1,
+        State.UPLOADED -> 2,
+        State.FINALIZING -> 3,
+        State.INVALID -> 4,
+        State.SUBMITTED -> 5,
+        State.REJECTED -> 6,
+        State.FAILED -> 7,
+        State.IN_REVIEW -> 8,
+        State.ARCHIVED -> 9,
+        State.FEDORA_ARCHIVED -> 10,
+      ),
+    )
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.GetSummaryReportData.queryWithoutDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.GetSummaryReportData.operationName)
+    }
+  }
+
+  it should "only list totals for deposits that apply to the filters" in {
+    val response =
+      """{
+        |  "data": {
+        |    "total": {
+        |      "totalCount": 55
+        |    },
+        |    "draft": {
+        |      "totalCount": 1
+        |    },
+        |    "uploaded": {
+        |      "totalCount": 2
+        |    },
+        |    "finalizing": {
+        |      "totalCount": 3
+        |    },
+        |    "invalid": {
+        |      "totalCount": 4
+        |    },
+        |    "submitted": {
+        |      "totalCount": 5
+        |    },
+        |    "rejected": {
+        |      "totalCount": 6
+        |    },
+        |    "failed": {
+        |      "totalCount": 7
+        |    },
+        |    "in_review": {
+        |      "totalCount": 8
+        |    },
+        |    "archived": {
+        |      "totalCount": 9
+        |    },
+        |    "fedora_archived": {
+        |      "totalCount": 10
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
+
+    repo.getSummaryReportData(Option.empty, Option("datamanager1"), Option(1)).success.value shouldBe SummaryReportData(
+      total = 55,
+      totalPerState = Map(
+        State.DRAFT -> 1,
+        State.UPLOADED -> 2,
+        State.FINALIZING -> 3,
+        State.INVALID -> 4,
+        State.SUBMITTED -> 5,
+        State.REJECTED -> 6,
+        State.FAILED -> 7,
+        State.IN_REVIEW -> 8,
+        State.ARCHIVED -> 9,
+        State.FEDORA_ARCHIVED -> 10,
+      ),
+    )
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.GetSummaryReportData.queryWithoutDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.GetSummaryReportData.operationName) ~
+        ("variables" -> {
+          ("curator" -> {
+            ("userId" -> "datamanager1") ~ ("filter" -> "LATEST")
+          }) ~
+            ("laterThan" -> "2018-03-21T20:43:01.000Z")
+        })
+    }
+  }
+
+  it should "retrieve the counts necessary for a summary report (with depositor)" in {
+    val response =
+      """{
+        |  "data": {
+        |    "depositor": {
+        |      "total": {
+        |        "totalCount": 55
+        |      },
+        |      "draft": {
+        |        "totalCount": 1
+        |      },
+        |      "uploaded": {
+        |        "totalCount": 2
+        |      },
+        |      "finalizing": {
+        |        "totalCount": 3
+        |      },
+        |      "invalid": {
+        |        "totalCount": 4
+        |      },
+        |      "submitted": {
+        |        "totalCount": 5
+        |      },
+        |      "rejected": {
+        |        "totalCount": 6
+        |      },
+        |      "failed": {
+        |        "totalCount": 7
+        |      },
+        |      "in_review": {
+        |        "totalCount": 8
+        |      },
+        |      "archived": {
+        |        "totalCount": 9
+        |      },
+        |      "fedora_archived": {
+        |        "totalCount": 10
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
+
+    repo.getSummaryReportData(Option("user001"), Option.empty, Option.empty).success.value shouldBe SummaryReportData(
+      total = 55,
+      totalPerState = Map(
+        State.DRAFT -> 1,
+        State.UPLOADED -> 2,
+        State.FINALIZING -> 3,
+        State.INVALID -> 4,
+        State.SUBMITTED -> 5,
+        State.REJECTED -> 6,
+        State.FAILED -> 7,
+        State.IN_REVIEW -> 8,
+        State.ARCHIVED -> 9,
+        State.FEDORA_ARCHIVED -> 10,
+      ),
+    )
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.GetSummaryReportData.queryWithDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.GetSummaryReportData.operationName) ~
+        ("variables" -> ("depositorId" -> "user001"))
+    }
+  }
+
+  it should "only list totals for deposits that apply to the filters (with depositor)" in {
+    val response =
+      """{
+        |  "data": {
+        |    "depositor": {
+        |      "total": {
+        |        "totalCount": 55
+        |      },
+        |      "draft": {
+        |        "totalCount": 1
+        |      },
+        |      "uploaded": {
+        |        "totalCount": 2
+        |      },
+        |      "finalizing": {
+        |        "totalCount": 3
+        |      },
+        |      "invalid": {
+        |        "totalCount": 4
+        |      },
+        |      "submitted": {
+        |        "totalCount": 5
+        |      },
+        |      "rejected": {
+        |        "totalCount": 6
+        |      },
+        |      "failed": {
+        |        "totalCount": 7
+        |      },
+        |      "in_review": {
+        |        "totalCount": 8
+        |      },
+        |      "archived": {
+        |        "totalCount": 9
+        |      },
+        |      "fedora_archived": {
+        |        "totalCount": 10
+        |      }
+        |    }
+        |  }
+        |}""".stripMargin
+    server.enqueue(new MockResponse().setBody(response))
+
+    repo.getSummaryReportData(Option("user001"), Option("datamanager1"), Option(0)).success.value shouldBe SummaryReportData(
+      total = 55,
+      totalPerState = Map(
+        State.DRAFT -> 1,
+        State.UPLOADED -> 2,
+        State.FINALIZING -> 3,
+        State.INVALID -> 4,
+        State.SUBMITTED -> 5,
+        State.REJECTED -> 6,
+        State.FAILED -> 7,
+        State.IN_REVIEW -> 8,
+        State.ARCHIVED -> 9,
+        State.FEDORA_ARCHIVED -> 10,
+      ),
+    )
+
+    server.takeRequest().getBody.readUtf8() shouldBe Serialization.write {
+      ("query" -> ServiceDepositPropertiesRepository.GetSummaryReportData.queryWithDepositor) ~
+        ("operationName" -> ServiceDepositPropertiesRepository.GetSummaryReportData.operationName) ~
+        ("variables" -> {
+          ("depositorId" -> "user001") ~
+            ("curator" -> {
+              ("userId" -> "datamanager1") ~ ("filter" -> "LATEST")
+            }) ~
+            ("laterThan" -> "2018-03-22T20:43:01.000Z")
+        })
+    }
   }
 
   "listReportData" should "???" ignore { // TODO test after implementation

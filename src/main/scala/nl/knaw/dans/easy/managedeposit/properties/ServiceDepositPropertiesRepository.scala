@@ -16,13 +16,13 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
-import nl.knaw.dans.lib.error._
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
-import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositPropertiesRepository.{ FindByDatasetId, ListDepositsToBeCleaned }
+import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositPropertiesRepository.{ FindByDatasetId, GetSummaryReportData, ListDepositsToBeCleaned }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.managedeposit.properties.graphql.direction.Forwards
+import nl.knaw.dans.lib.error._
 import org.joda.time.{ DateTime, DateTimeZone }
 import org.json4s.JsonAST.{ JInt, JString }
 import org.json4s.JsonDSL._
@@ -52,7 +52,32 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
   override def getSummaryReportData(depositor: Option[DepositorId],
                                     datamanager: Option[Datamanager],
                                     age: Option[Age],
-                                   ): Try[SummaryReportData] = ???
+                                   ): Try[SummaryReportData] = {
+    val dmFilter = datamanager
+      .map(datamanager => Map("curator" -> ("userId" -> datamanager) ~ ("filter" -> "LATEST")))
+      .getOrElse(Map.empty)
+    val ageFilter = age
+      .map(age => Map[String, JValue]("laterThan" -> now.minusDays(age).toString(dateTimeFormatter)))
+      .getOrElse(Map.empty)
+
+    depositor
+      .map(depositorId => {
+        val vars = Map[String, JValue]("depositorId" -> depositorId) ++ dmFilter ++ ageFilter
+        client.doQuery(GetSummaryReportData.queryWithDepositor, GetSummaryReportData.operationName, vars)
+          .map(_.extract[GetSummaryReportData.DataWithDepositor].depositor.mapValues(_.totalCount))
+      })
+      .getOrElse {
+        client.doQuery(GetSummaryReportData.queryWithoutDepositor, GetSummaryReportData.operationName, dmFilter ++ ageFilter)
+          .map(_.extract[GetSummaryReportData.DataWithoutDepositor].mapValues(_.totalCount))
+      }
+      .map(totals => {
+        val total = totals("total")
+        val states = totals - "total"
+        val totalPerState = states.map { case (stateString, total) => State.withName(stateString.toUpperCase) -> total }
+        SummaryReportData(total, totalPerState)
+      })
+      .toTry
+  }
 
   override def listReportData(depositor: Option[DepositorId], datamanager: Option[Datamanager], age: Option[Age]): Try[Stream[DepositInformation]] = ???
 
@@ -108,6 +133,88 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
 }
 
 object ServiceDepositPropertiesRepository {
+
+  object GetSummaryReportData {
+    case class DataWithDepositor(depositor: DataWithoutDepositor)
+    type DataWithoutDepositor = Map[String, Total]
+    case class Total(totalCount: Int)
+
+    val operationName = "GetSummaryReportData"
+    val queryWithDepositor: String =
+      """query DepositsPerState($depositorId: String!, $curator: DepositCuratorFilter, $laterThan: DateTime) {
+        |  depositor(id: $depositorId) {
+        |    total: deposits(curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    draft: deposits(state: {label: DRAFT}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    uploaded: deposits(state: {label: UPLOADED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    finalizing: deposits(state: {label: FINALIZING}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    invalid: deposits(state: {label: INVALID}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    submitted: deposits(state: {label: SUBMITTED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    rejected: deposits(state: {label: REJECTED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    failed: deposits(state: {label: FAILED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    in_review: deposits(state: {label: IN_REVIEW}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    archived: deposits(state: {label: ARCHIVED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |    fedora_archived: deposits(state: {label: FEDORA_ARCHIVED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |      totalCount
+        |    }
+        |  }
+        |}""".stripMargin
+    val queryWithoutDepositor: String =
+      """query DepositsPerState($curator: DepositCuratorFilter, $laterThan: DateTime) {
+        |  total: deposits(curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  draft: deposits(state: {label: DRAFT}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  uploaded: deposits(state: {label: UPLOADED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  finalizing: deposits(state: {label: FINALIZING}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  invalid: deposits(state: {label: INVALID}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  submitted: deposits(state: {label: SUBMITTED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  rejected: deposits(state: {label: REJECTED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  failed: deposits(state: {label: FAILED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  in_review: deposits(state: {label: IN_REVIEW}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  archived: deposits(state: {label: ARCHIVED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |  fedora_archived: deposits(state: {label: FEDORA_ARCHIVED}, curator: $curator, lastModifiedLaterThan: $laterThan) {
+        |    totalCount
+        |  }
+        |}""".stripMargin
+  }
 
   object FindByDatasetId {
     case class Data(identifier: Option[Identifier])
