@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.easy.managedeposit.properties
 
+import nl.knaw.dans.easy.managedeposit.Location.Location
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositProperties.{ DeleteDepositProperties, GetDepositInformation, SetCurationParameters, SetState }
@@ -29,7 +30,7 @@ import org.json4s.{ Formats, JValue }
 import scala.util.{ Failure, Try }
 
 class ServiceDepositProperties(depositId: DepositId,
-                               location: String,
+                               location: Location,
                                client: GraphQLClient,
                               )(implicit formats: Formats) extends DepositProperties with DebugEnhancedLogging {
 

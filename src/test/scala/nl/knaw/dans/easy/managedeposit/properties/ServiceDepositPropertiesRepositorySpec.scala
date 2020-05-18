@@ -19,7 +19,7 @@ import better.files.File
 import nl.knaw.dans.easy.managedeposit.fixture.{ FileSystemTestDataFixture, FixedDateTime, TestSupportFixture }
 import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
-import nl.knaw.dans.easy.managedeposit.{ DepositInformation, State }
+import nl.knaw.dans.easy.managedeposit.{ DepositInformation, Location, State }
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
 import org.json4s.JsonDSL._
@@ -414,7 +414,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "API",
-          location = "UNKNOWN",
+          location = Location.UNKNOWN,
           bagDirName = "bag1",
         )
         prop2 shouldBe DepositInformation(
@@ -429,7 +429,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "SMD",
-          location = "INGEST_FLOW_ARCHIVED",
+          location = Location.INGEST_FLOW_ARCHIVED,
           bagDirName = "n/a",
         )
     }
@@ -528,7 +528,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "API",
-          location = "UNKNOWN",
+          location = Location.UNKNOWN,
           bagDirName = "bag1",
         )
         prop2 shouldBe DepositInformation(
@@ -543,7 +543,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "SMD",
-          location = "INGEST_FLOW_ARCHIVED",
+          location = Location.INGEST_FLOW_ARCHIVED,
           bagDirName = "n/a",
         )
     }
@@ -637,7 +637,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "API",
-          location = "UNKNOWN",
+          location = Location.UNKNOWN,
           bagDirName = "bag1",
         )
         prop2 shouldBe DepositInformation(
@@ -652,7 +652,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "SMD",
-          location = "INGEST_FLOW_ARCHIVED",
+          location = Location.INGEST_FLOW_ARCHIVED,
           bagDirName = "n/a",
         )
     }
@@ -756,7 +756,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "API",
-          location = "UNKNOWN",
+          location = Location.UNKNOWN,
           bagDirName = "bag1",
         )
         prop2 shouldBe DepositInformation(
@@ -771,7 +771,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "SMD",
-          location = "INGEST_FLOW_ARCHIVED",
+          location = Location.INGEST_FLOW_ARCHIVED,
           bagDirName = "n/a",
         )
     }
@@ -872,7 +872,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "API",
-          location = "UNKNOWN",
+          location = Location.UNKNOWN,
           bagDirName = "bag1",
         )
         prop2 shouldBe DepositInformation(
@@ -887,7 +887,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "SMD",
-          location = "INGEST_FLOW_ARCHIVED",
+          location = Location.INGEST_FLOW_ARCHIVED,
           bagDirName = "n/a",
         )
     }
@@ -993,7 +993,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "API",
-          location = "UNKNOWN",
+          location = Location.UNKNOWN,
           bagDirName = "bag1",
         )
         prop2 shouldBe DepositInformation(
@@ -1008,7 +1008,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "SMD",
-          location = "INGEST_FLOW_ARCHIVED",
+          location = Location.INGEST_FLOW_ARCHIVED,
           bagDirName = "n/a",
         )
     }
@@ -1108,7 +1108,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "API",
-          location = "UNKNOWN",
+          location = Location.UNKNOWN,
           bagDirName = "bag1",
         )
         prop2 shouldBe DepositInformation(
@@ -1123,7 +1123,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "SMD",
-          location = "INGEST_FLOW_ARCHIVED",
+          location = Location.INGEST_FLOW_ARCHIVED,
           bagDirName = "n/a",
         )
     }
@@ -1232,7 +1232,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "API",
-          location = "UNKNOWN",
+          location = Location.UNKNOWN,
           bagDirName = "bag1",
         )
         prop2 shouldBe DepositInformation(
@@ -1247,7 +1247,7 @@ class ServiceDepositPropertiesRepositorySpec extends TestSupportFixture
           creationTimestamp = "2018-12-31T23:00:00.000Z",
           lastModified = "2020-05-12T12:37:07.073Z",
           origin = "SMD",
-          location = "INGEST_FLOW_ARCHIVED",
+          location = Location.INGEST_FLOW_ARCHIVED,
           bagDirName = "n/a",
         )
     }

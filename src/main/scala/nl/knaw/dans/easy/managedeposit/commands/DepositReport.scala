@@ -52,7 +52,7 @@ class DepositReport(depositPropertiesFactory: DepositPropertiesRepository)
     Try {
       location.list
         .toStream
-        .collect { case file if file.isDirectory => FileSystemDeposit(file, "").getStorageInformation.unsafeGetOrThrow }
+        .collect { case file if file.isDirectory => FileSystemDeposit(file, Location.UNKNOWN).getStorageInformation.unsafeGetOrThrow }
     }.flatMap(ReportGenerator.outputStorageReport)
       .map(_ => "End of storage report.")
   }
@@ -62,7 +62,7 @@ class DepositReport(depositPropertiesFactory: DepositPropertiesRepository)
       makeCompleteTable {
         location.list
           .toStream
-          .collect { case file if file.isDirectory => new FileDepositProperties(file, "").properties }
+          .collect { case file if file.isDirectory => new FileDepositProperties(file, Location.UNKNOWN).properties }
       }
     } map (_ => "End of raw report.")
   }

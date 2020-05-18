@@ -16,6 +16,7 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
+import nl.knaw.dans.easy.managedeposit.Location.Location
 import nl.knaw.dans.easy.managedeposit.properties.FileSystemDeposit.depositPropertiesFileName
 import nl.knaw.dans.easy.managedeposit.{ Deposit, NotReadableException, StorageInformation }
 import nl.knaw.dans.lib.error._
@@ -27,7 +28,7 @@ import scala.util.{ Failure, Success, Try }
 trait FileSystemDeposit extends DebugEnhancedLogging {
 
   val depositPath: Deposit
-  val location: String
+  val location: Location
 
   def depositPropertiesFilePath: File = depositPath / depositPropertiesFileName
 
@@ -115,8 +116,8 @@ trait FileSystemDeposit extends DebugEnhancedLogging {
 object FileSystemDeposit {
   val depositPropertiesFileName = "deposit.properties"
 
-  def apply(path: Deposit, loc: String): FileSystemDeposit = new FileSystemDeposit {
+  def apply(path: Deposit, loc: Location): FileSystemDeposit = new FileSystemDeposit {
     override val depositPath: Deposit = path
-    override val location: String = loc
+    override val location: Location = loc
   }
 }

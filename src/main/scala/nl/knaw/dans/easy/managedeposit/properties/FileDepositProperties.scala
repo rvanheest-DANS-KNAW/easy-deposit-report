@@ -17,6 +17,7 @@ package nl.knaw.dans.easy.managedeposit.properties
 
 import java.io.FileNotFoundException
 
+import nl.knaw.dans.easy.managedeposit.Location.Location
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.easy.managedeposit.properties.FileDepositProperties._
@@ -32,7 +33,7 @@ import scala.language.postfixOps
 import scala.util.Try
 
 class FileDepositProperties(override val depositPath: Deposit,
-                            override val location: String,
+                            override val location: Location,
                            ) extends DepositProperties with FileSystemDeposit with DebugEnhancedLogging {
   private lazy val depositProperties: Try[PropertiesConfiguration] = findDepositProperties
   private lazy val lastModified: Option[DateTime] = getLastModifiedTimestamp.unsafeGetOrThrow

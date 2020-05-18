@@ -17,7 +17,7 @@ package nl.knaw.dans.easy.managedeposit.properties
 
 import nl.knaw.dans.easy.managedeposit.fixture.{ FileSystemTestDataFixture, TestSupportFixture }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
-import nl.knaw.dans.easy.managedeposit.{ DepositInformation, State }
+import nl.knaw.dans.easy.managedeposit.{ DepositInformation, Location, State }
 import okhttp3.HttpUrl
 import okhttp3.mockwebserver.{ MockResponse, MockWebServer }
 import org.json4s.JsonDSL._
@@ -44,7 +44,7 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture
   private val client = new GraphQLClient(baseUrl.url())
   private val depositId = depositOne.name
   private implicit val dansDoiPrefixes: List[String] = List("10.17026/", "10.5072/")
-  private val properties = new ServiceDepositProperties(depositId, "SWORD2", client)
+  private val properties = new ServiceDepositProperties(depositId, Location.SWORD2, client)
 
   override protected def afterAll(): Unit = {
     server.shutdown()
@@ -126,7 +126,7 @@ class ServiceDepositPropertiesSpec extends TestSupportFixture
       creationTimestamp = "2018-12-31T23:00:00.000Z",
       lastModified = "2020-05-12T12:37:07.073Z",
       origin = "API",
-      location = "SWORD2",
+      location = Location.SWORD2,
       bagDirName = "bag1",
     )
 

@@ -15,6 +15,7 @@
  */
 package nl.knaw.dans.easy.managedeposit
 
+import nl.knaw.dans.easy.managedeposit.Location.Location
 import nl.knaw.dans.easy.managedeposit.State.{ ARCHIVED, FAILED, State }
 import org.apache.commons.lang.BooleanUtils
 
@@ -29,7 +30,7 @@ case class DepositInformation(depositId: DepositId,
                               creationTimestamp: String,
                               lastModified: String,
                               origin: String,
-                              location: String,
+                              location: Location,
                               bagDirName: String,
                              )(implicit dansDoiPrefixes: List[String]) {
 

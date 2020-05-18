@@ -19,6 +19,7 @@ import java.io.{ ByteArrayOutputStream, PrintStream }
 import java.text.SimpleDateFormat
 import java.util.{ Calendar, UUID }
 
+import nl.knaw.dans.easy.managedeposit.Location.Location
 import nl.knaw.dans.easy.managedeposit.ReportGeneratorSpec.ReportType
 import nl.knaw.dans.easy.managedeposit.ReportGeneratorSpec.ReportType.ReportType
 import nl.knaw.dans.easy.managedeposit.State._
@@ -121,14 +122,14 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
 
   "outputErrorReport" should "only print the deposits containing an error" in {
     val baos = new ByteArrayOutputStream()
-    val errorDeposit = createDeposit("dans-0", ARCHIVED, "SRC1").copy(dansDoiRegistered = Some(false)) //violates the rule ARCHIVED must be registered when DANS doi
-    val noDansDoiDeposit = createDeposit("dans-1", ARCHIVED, "SRC1").copy(dansDoiRegistered = Some(false), doiIdentifier = Some("11.11111/other-doi-123"))
+    val errorDeposit = createDeposit("dans-0", ARCHIVED, Location.INGEST_FLOW).copy(dansDoiRegistered = Some(false)) //violates the rule ARCHIVED must be registered when DANS doi
+    val noDansDoiDeposit = createDeposit("dans-1", ARCHIVED, Location.INGEST_FLOW).copy(dansDoiRegistered = Some(false), doiIdentifier = Some("11.11111/other-doi-123"))
     val ps: PrintStream = new PrintStream(baos, true)
     val deposits = Stream(
       errorDeposit,
       noDansDoiDeposit, //does not violate any rule
-      createDeposit("dans-2", SUBMITTED, "SRC1"), //does not violate any rule
-      createDeposit("dans-3", SUBMITTED, "SRC1"), //does not violate any rule
+      createDeposit("dans-2", SUBMITTED, Location.INGEST_FLOW), //does not violate any rule
+      createDeposit("dans-3", SUBMITTED, Location.INGEST_FLOW), //does not violate any rule
     )
     outputReportManged(ps, deposits, ReportType.ERROR)
     val errorReport = baos.toString
@@ -140,9 +141,9 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
     val baos = new ByteArrayOutputStream()
     val ps: PrintStream = new PrintStream(baos, true)
     val deposits = Stream(
-      createDeposit("dans-0", DRAFT, "SRC2").copy(dansDoiRegistered = Some(false)),
-      createDeposit("dans-1", SUBMITTED, "SRC1"),
-      createDeposit("dans-1", SUBMITTED, "SRC1"),
+      createDeposit("dans-0", DRAFT, Location.SWORD2).copy(dansDoiRegistered = Some(false)),
+      createDeposit("dans-1", SUBMITTED, Location.INGEST_FLOW),
+      createDeposit("dans-1", SUBMITTED, Location.INGEST_FLOW),
     )
     outputReportManged(ps, deposits, ReportType.ERROR)
 
@@ -154,12 +155,12 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
     val baos = new ByteArrayOutputStream()
     val ps: PrintStream = new PrintStream(baos, true)
     val deposits = Stream(
-      createDeposit("dans-0", ARCHIVED, "SRC1").copy(dansDoiRegistered = Some(false)), //violates the rule ARCHIVED must be registered
-      createDeposit("dans-1", FAILED, "SRC1"),
-      createDeposit("dans-2", REJECTED, "SRC1"),
-      createDeposit("dans-3", INVALID, "SRC2"),
-      createDeposit("dans-4", UNKNOWN, "SRC1"),
-      createDeposit("dans-5", null, "SRC1"),
+      createDeposit("dans-0", ARCHIVED, Location.INGEST_FLOW).copy(dansDoiRegistered = Some(false)), //violates the rule ARCHIVED must be registered
+      createDeposit("dans-1", FAILED, Location.INGEST_FLOW),
+      createDeposit("dans-2", REJECTED, Location.INGEST_FLOW),
+      createDeposit("dans-3", INVALID, Location.SWORD2),
+      createDeposit("dans-4", UNKNOWN, Location.INGEST_FLOW),
+      createDeposit("dans-5", null, Location.INGEST_FLOW),
     )
     outputReportManged(ps, deposits, ReportType.ERROR)
 
@@ -171,16 +172,16 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
     val baos = new ByteArrayOutputStream()
     val ps: PrintStream = new PrintStream(baos, true)
     val depositsInReport = Stream(
-      createDeposit("dans-0", ARCHIVED, "SRC1").copy(dansDoiRegistered = Some(false)), //violates the rule ARCHIVED must be registered
-      createDeposit("dans-1", FAILED, "SRC1"),
-      createDeposit("dans-2", REJECTED, "SRC1"),
-      createDeposit("dans-3", INVALID, "SRC2"),
-      createDeposit("dans-4", UNKNOWN, "SRC1"),
-      createDeposit("dans-5", null, "SRC1"),
+      createDeposit("dans-0", ARCHIVED, Location.INGEST_FLOW).copy(dansDoiRegistered = Some(false)), //violates the rule ARCHIVED must be registered
+      createDeposit("dans-1", FAILED, Location.INGEST_FLOW),
+      createDeposit("dans-2", REJECTED, Location.INGEST_FLOW),
+      createDeposit("dans-3", INVALID, Location.SWORD2),
+      createDeposit("dans-4", UNKNOWN, Location.INGEST_FLOW),
+      createDeposit("dans-5", null, Location.INGEST_FLOW),
     )
     val depositsNotInReport = Stream(
-      createDeposit("dans-rejected", REJECTED, "SRC1").copy(origin = "API", description = Some(Curation.requestChangesDescription)),
-      createDeposit("dans-abandoned-draft", INVALID, "SRC1").copy(origin = "SWORD2", description = Some("abandoned draft, data removed")),
+      createDeposit("dans-rejected", REJECTED, Location.INGEST_FLOW).copy(origin = "API", description = Some(Curation.requestChangesDescription)),
+      createDeposit("dans-abandoned-draft", INVALID, Location.INGEST_FLOW).copy(origin = "SWORD2", description = Some("abandoned draft, data removed")),
     )
     outputReportManged(ps, depositsInReport #::: depositsNotInReport, ReportType.ERROR)
 
@@ -267,7 +268,7 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
       s"${ deposit.description.getOrElse("n/a") }"
   }
 
-  private def createDeposit(depositorId: String, state: State, location: String): DepositInformation = {
+  private def createDeposit(depositorId: String, state: State, location: Location): DepositInformation = {
     DepositInformation(
       depositId = UUID.randomUUID().toString,
       depositor = depositorId,
@@ -296,22 +297,22 @@ class ReportGeneratorSpec extends TestSupportFixture with Inspectors {
   }
 
   private def createDeposits = Stream(
-    createDeposit("dans-1", ARCHIVED, "SRC1"),
-    createDeposit("dans-1", ARCHIVED, "SRC1"),
-    createDeposit("dans-1", DRAFT, "SRC2"),
-    createDeposit("dans-1", FINALIZING, "SRC2"),
-    createDeposit("dans-1", INVALID, "SRC1"),
-    createDeposit("dans-1", REJECTED, "SRC1"),
-    createDeposit("dans-1", IN_REVIEW, "SRC1"),
-    createDeposit("dans-1", FEDORA_ARCHIVED, "SRC1"),
-    createDeposit("dans-1", SUBMITTED, "SRC1"),
-    createDeposit("dans-1", SUBMITTED, "SRC1"),
-    createDeposit("dans-1", SUBMITTED, "SRC1"),
-    createDeposit("dans-1", SUBMITTED, "SRC1"), // duplicate deposits are allowed
-    createDeposit("dans-1", UNKNOWN, "SRC2"),
-    createDeposit("dans-1", UNKNOWN, "SRC1"),
-    createDeposit("dans-1", null, "SRC1"), // mapped and added to unknown
-    createDeposit("dans-1", null, "SRC1"),
+    createDeposit("dans-1", ARCHIVED, Location.INGEST_FLOW),
+    createDeposit("dans-1", ARCHIVED, Location.INGEST_FLOW),
+    createDeposit("dans-1", DRAFT, Location.SWORD2),
+    createDeposit("dans-1", FINALIZING, Location.SWORD2),
+    createDeposit("dans-1", INVALID, Location.INGEST_FLOW),
+    createDeposit("dans-1", REJECTED, Location.INGEST_FLOW),
+    createDeposit("dans-1", IN_REVIEW, Location.INGEST_FLOW),
+    createDeposit("dans-1", FEDORA_ARCHIVED, Location.INGEST_FLOW),
+    createDeposit("dans-1", SUBMITTED, Location.INGEST_FLOW),
+    createDeposit("dans-1", SUBMITTED, Location.INGEST_FLOW),
+    createDeposit("dans-1", SUBMITTED, Location.INGEST_FLOW),
+    createDeposit("dans-1", SUBMITTED, Location.INGEST_FLOW), // duplicate deposits are allowed
+    createDeposit("dans-1", UNKNOWN, Location.SWORD2),
+    createDeposit("dans-1", UNKNOWN, Location.INGEST_FLOW),
+    createDeposit("dans-1", null, Location.INGEST_FLOW), // mapped and added to unknown
+    createDeposit("dans-1", null, Location.INGEST_FLOW),
   )
 }
 object ReportGeneratorSpec {

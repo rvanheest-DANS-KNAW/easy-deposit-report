@@ -16,7 +16,7 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
-import nl.knaw.dans.easy.managedeposit.State
+import nl.knaw.dans.easy.managedeposit.{ Location, State }
 import nl.knaw.dans.easy.managedeposit.fixture.{ FileSystemTestDataFixture, TestSupportFixture }
 import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
 
@@ -49,7 +49,7 @@ class FileDepositPropertiesRepositorySpec extends TestSupportFixture with FileSy
     inside(repo.load(ruimteReis03.name)) {
       case Success(props: FileDepositProperties) =>
         props.depositPath shouldBe ingestFlowInbox / ruimteReis03.name
-        props.location shouldBe "INGEST_FLOW"
+        props.location shouldBe Location.INGEST_FLOW
     }
   }
   
@@ -57,7 +57,7 @@ class FileDepositPropertiesRepositorySpec extends TestSupportFixture with FileSy
     inside(repo.load(ruimteReis04.name)) {
       case Success(props: FileDepositProperties) =>
         props.depositPath shouldBe sword2Inbox / ruimteReis04.name
-        props.location shouldBe "SWORD2"
+        props.location shouldBe Location.SWORD2
     }
   }
 
@@ -65,7 +65,7 @@ class FileDepositPropertiesRepositorySpec extends TestSupportFixture with FileSy
     inside(repo.load(ruimteReis01.name)) {
       case Success(props: FileDepositProperties) =>
         props.depositPath shouldBe ingestFlowArchivedInbox / ruimteReis01.name
-        props.location shouldBe "INGEST_FLOW_ARCHIVED"
+        props.location shouldBe Location.INGEST_FLOW_ARCHIVED
     }
   }
   

@@ -16,6 +16,7 @@
 package nl.knaw.dans.easy.managedeposit.properties
 
 import better.files.File
+import nl.knaw.dans.easy.managedeposit.Location.Location
 import nl.knaw.dans.easy.managedeposit.State.State
 import nl.knaw.dans.easy.managedeposit._
 import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.SummaryReportData
@@ -39,9 +40,9 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
   override def load(depositId: DepositId): Try[DepositProperties with FileSystemDeposit] = {
     // @formatter:off
     (
-      (sword2DepositsDir -> "SWORD2") #::
-        (ingestFlowInbox -> "INGEST_FLOW") #::
-        ingestFlowInboxArchived.map(_ -> "INGEST_FLOW_ARCHIVED").toStream
+      (sword2DepositsDir -> Location.SWORD2) #::
+        (ingestFlowInbox -> Location.INGEST_FLOW) #::
+        ingestFlowInboxArchived.map(_ -> Location.INGEST_FLOW_ARCHIVED).toStream
     )
     // @formatter:on
       .map { case (dir, location) => (dir / depositId) -> location }
@@ -49,11 +50,11 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
       .getOrElse(Failure(DepositDoesNotExist(depositId)))
   }
 
-  private def from(depositId: DepositId, deposit: Deposit, location: String) = {
+  private def from(depositId: DepositId, deposit: Deposit, location: Location) = {
     val loc = location
     new ServiceDepositProperties(depositId, loc, client) with FileSystemDeposit {
       override val depositPath: Deposit = deposit
-      override val location: String = loc
+      override val location: Location = loc
     }
   }
 
@@ -130,14 +131,14 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
   private def toDepositInformation(deposit: ListReportData.Deposit): DepositInformation = {
     // @formatter:off
     val location = (
-      (sword2DepositsDir -> "SWORD2") #::
-        (ingestFlowInbox -> "INGEST_FLOW") #::
-        ingestFlowInboxArchived.map(_ -> "INGEST_FLOW_ARCHIVED").toStream
+      (sword2DepositsDir -> Location.SWORD2) #::
+        (ingestFlowInbox -> Location.INGEST_FLOW) #::
+        ingestFlowInboxArchived.map(_ -> Location.INGEST_FLOW_ARCHIVED).toStream
     )
     // @formatter:on
       .map { case (dir, location) => (dir / deposit.depositId) -> location }
       .collectFirst { case (deposit, location) if deposit.exists => location }
-      .getOrElse("UNKNOWN")
+      .getOrElse(Location.UNKNOWN)
 
     DepositInformation(
       depositId = deposit.depositId,

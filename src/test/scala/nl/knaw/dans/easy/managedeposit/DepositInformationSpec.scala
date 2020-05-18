@@ -36,7 +36,7 @@ class DepositInformationSpec extends AnyFlatSpec with Matchers with OptionValues
     creationTimestamp = "2000-01-01", 
     lastModified = "2000-01-02", 
     origin = "ORIGIN-1", 
-    location = "LOCATION-1", 
+    location = Location.SWORD2, 
     bagDirName = "baggy",
   )
 
