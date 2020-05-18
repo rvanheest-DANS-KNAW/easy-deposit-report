@@ -318,7 +318,7 @@ object ServiceDepositPropertiesRepository {
     val queryWithDepositor: String =
       """query ListReportData($depositorId: String!, $curator: DepositCuratorFilter, $laterThan: DateTime, $count: Int!, $after: String) {
         |  depositor(id: $depositorId) {
-        |    deposits(curator: $curator, lastModifiedLaterThan: $laterThan, first: $count, after: $after) {
+        |    deposits(curator: $curator, lastModifiedLaterThan: $laterThan, orderBy: {field: CREATION_TIMESTAMP, direction: ASC}, first: $count, after: $after) {
         |      pageInfo {
         |        hasNextPage
         |        endCursor
@@ -354,7 +354,7 @@ object ServiceDepositPropertiesRepository {
         |}""".stripMargin
     val queryWithoutDepositor: String =
       """query ListReportData($curator: DepositCuratorFilter, $laterThan: DateTime, $count: Int!, $after: String) {
-        |  deposits(curator: $curator, lastModifiedLaterThan: $laterThan, first: $count, after: $after) {
+        |  deposits(curator: $curator, lastModifiedLaterThan: $laterThan, orderBy: {field: CREATION_TIMESTAMP, direction: ASC}, first: $count, after: $after) {
         |    pageInfo {
         |      hasNextPage
         |      endCursor
