@@ -23,7 +23,6 @@ import nl.knaw.dans.easy.managedeposit.properties.DepositPropertiesRepository.Su
 import nl.knaw.dans.easy.managedeposit.properties.ServiceDepositPropertiesRepository.{ FindByDatasetId, GetSummaryReportData, ListDepositsToBeCleaned, ListReportData }
 import nl.knaw.dans.easy.managedeposit.properties.graphql.GraphQLClient
 import nl.knaw.dans.easy.managedeposit.properties.graphql.direction.Forwards
-import nl.knaw.dans.lib.error._
 import org.joda.time.{ DateTime, DateTimeZone }
 import org.json4s.JsonAST.{ JInt, JString }
 import org.json4s.JsonDSL._
@@ -38,6 +37,12 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
                                         )(implicit dansDoiPrefixes: List[String], formats: Formats) extends DepositPropertiesRepository {
 
   override def load(depositId: DepositId): Try[DepositProperties with FileSystemDeposit] = {
+    loadOpt(depositId)
+      .map(Success(_))
+      .getOrElse(Failure(DepositDoesNotExist(depositId)))
+  }
+
+  private def loadOpt(depositId: DepositId): Option[ServiceDepositProperties with FileSystemDeposit] = {
     // @formatter:off
     (
       (sword2DepositsDir -> Location.SWORD2) #::
@@ -46,8 +51,7 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
     )
     // @formatter:on
       .map { case (dir, location) => (dir / depositId) -> location }
-      .collectFirst { case (deposit, location) if deposit.exists => Success(from(depositId, deposit, location)) }
-      .getOrElse(Failure(DepositDoesNotExist(depositId)))
+      .collectFirst { case (deposit, location) if deposit.exists => from(depositId, deposit, location) }
   }
 
   private def from(depositId: DepositId, deposit: Deposit, location: Location) = {
@@ -204,7 +208,7 @@ class ServiceDepositPropertiesRepository(client: GraphQLClient,
         )(_.deposits.pageInfo)
           .map(_.map(_.deposits))
       }
-      .map(_.toStream.flatMap(_.edges.map(_.node.depositId).map(load(_).unsafeGetOrThrow)))
+      .map(_.toStream.flatMap(_.edges.map(_.node.depositId).flatMap(loadOpt)))
   }
 }
 
