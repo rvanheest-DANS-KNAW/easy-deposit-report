@@ -221,7 +221,7 @@ object ServiceDepositPropertiesRepository {
 
     val operationName = "GetSummaryReportData"
     val queryWithDepositor: String =
-      """query DepositsPerState($depositorId: String!, $curator: DepositCuratorFilter, $laterThan: DateTime) {
+      """query GetSummaryReportData($depositorId: String!, $curator: DepositCuratorFilter, $laterThan: DateTime) {
         |  depositor(id: $depositorId) {
         |    total: deposits(curator: $curator, lastModifiedLaterThan: $laterThan) {
         |      totalCount
@@ -259,7 +259,7 @@ object ServiceDepositPropertiesRepository {
         |  }
         |}""".stripMargin
     val queryWithoutDepositor: String =
-      """query DepositsPerState($curator: DepositCuratorFilter, $laterThan: DateTime) {
+      """query GetSummaryReportData($curator: DepositCuratorFilter, $laterThan: DateTime) {
         |  total: deposits(curator: $curator, lastModifiedLaterThan: $laterThan) {
         |    totalCount
         |  }
